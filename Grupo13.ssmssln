@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# SQL Server Management Studio Solution File, Format Version 20.00
+VisualStudioVersion = 15.0.28307.421
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{4F2E2C19-372F-40D8-9FA7-9D2138C6997A}") = "Com2900G13", "Com2900G13\Com2900G13.ssmssqlproj", "{E9461701-333D-4787-A8FB-28C68D3631DF}"
+EndProject
+Project("{4F2E2C19-372F-40D8-9FA7-9D2138C6997A}") = "Grupo13", "Grupo13\Grupo13.ssmssqlproj", "{FA40D1B9-D7BB-4649-BCB5-146201A50796}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|Default = Default|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E9461701-333D-4787-A8FB-28C68D3631DF}.Default|Default.ActiveCfg = Default
+		{1B53409F-2909-4113-BD74-625DE5D37C95}.Default|Default.ActiveCfg = Default
+		{FA40D1B9-D7BB-4649-BCB5-146201A50796}.Default|Default.ActiveCfg = Default
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C1489CB7-C643-4448-A4FD-AF39C5747784}
+	EndGlobalSection
+EndGlobal
