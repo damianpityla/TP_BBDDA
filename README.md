@@ -10,7 +10,7 @@ Larriba	Pedro Ezequiel    - [**@Piteeerr**]
 
 Liber Federico Manuel     - [**@FeduuML**]  
 
-Murillo	Joel              - [**@naGIX1212**]  
+Murillo	Joel              - [**@naGIX1212**](https://github.com/naGiX1212)
 
 Pityla Damian	            - [**@damianpityla**](https://github.com/damianpityla)  
 
