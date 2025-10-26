@@ -12,7 +12,7 @@ Liber Federico Manuel     - **@FeduuML**
 
 Murillo	Joel              - **@naGIX1212**  
 
-Pityla Damian	            - **@damianpityla**  
+Pityla Damian	            - [**@damianpityla**](https://github.com/damianpityla)  
 
 ## Descripción
 Trabajo práctico de Bases de Datos Aplicada.
