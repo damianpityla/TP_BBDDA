@@ -1,20 +1,20 @@
 /* =========================================================
-   Tables.sql - Com2900G13
-   Proyecto: Altos de Saint Just (BDA)
-   Alumnos:
-   45628269 - Liber Federico Manuel 
-   46265307 - Ares Nicolás jesús 
-   45754471 - Pityla Damian 
-   42587858 - Murillo Joel
-   46292592 - Larriba Pedro Ezequiel 
-   40464246 - Diaz Ortiz  Lucas Javier 
+	TablasDB.sql - Com2900G13
+	Proyecto: Altos de Saint Just (BDA)
+	Crea tablas, PK/FK y restricciones según DER.
 
-   Crea tablas, PK/FK y checks según DER.
-   ========================================================= */ 
+	Alumnos:
+		45628269 - Liber Federico Manuel 
+		46265307 - Ares Nicolás jesús 
+		45754471 - Pityla Damian 
+		42587858 - Murillo Joel
+		46292592 - Larriba Pedro Ezequiel 
+		40464246 - Diaz Ortiz  Lucas Javier 
 
-USE Com2900G13;
+========================================================= */
+
+USE Com2900G13
 GO
-
 
 -- Consorcio
 IF OBJECT_ID('bda.Consorcio') IS NOT NULL DROP TABLE bda.Consorcio;
@@ -193,18 +193,18 @@ CREATE TABLE bda.Gastos_Extraordinarios (
   paga_en_cuotas BIT NOT NULL DEFAULT(0),
   nro_de_cuotas SMALLINT NULL CHECK (nro_de_cuotas IS NULL OR (nro_de_cuotas BETWEEN 1 AND 120)),
   importe DECIMAL(18,2) NULL CHECK (importe >= 0),
-  CONSTRAINT FK_GO_detalle FOREIGN KEY (id_detalle) REFERENCES bda.detalle_expensa(id_detalle),
-  CONSTRAINT FK_GO_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
+  CONSTRAINT FK_GE_detalle FOREIGN KEY (id_detalle) REFERENCES bda.detalle_expensa(id_detalle),
+  CONSTRAINT FK_GE_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
 );
 
 -- pagos
 IF OBJECT_ID('bda.Pagos') IS NOT NULL DROP TABLE bda.Pagos;
 CREATE TABLE bda.Pagos (
-  id_pago INT IDENTITY(1,1) PRIMARY KEY,
-  cta_origen VARCHAR(34) NOT NULL, -- CVU/CBU
+  id_pago INT PRIMARY KEY NOT NULL,
   fecha_pago DATE NOT NULL,
+  cta_origen VARCHAR(22) NOT NULL, -- CVU/CBU
   importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),
-  asociado BIT NOT NULL DEFAULT(0),
+  asociado BIT NULL DEFAULT(0),
   id_unidad INT NULL,
   id_expensa INT NULL,
   CONSTRAINT FK_Pagos_UF FOREIGN KEY (id_unidad) REFERENCES bda.Unidad_Funcional(id_unidad),
@@ -212,4 +212,3 @@ CREATE TABLE bda.Pagos (
 );
 CREATE INDEX IX_Pagos_Asociacion  ON bda.Pagos(asociado, id_unidad, id_expensa);
 CREATE INDEX IX_Pagos_CuentaFecha ON bda.Pagos(cta_origen, fecha_pago);
-
