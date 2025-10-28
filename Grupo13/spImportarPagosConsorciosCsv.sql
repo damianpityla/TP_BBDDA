@@ -12,6 +12,8 @@
 		40464246 - Diaz Ortiz  Lucas Javier 
 
 ========================================================= */
+USE Com2900G13
+GO
 
 DROP TABLE IF EXISTS #tmpPagos
 GO
