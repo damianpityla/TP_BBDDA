@@ -10,9 +10,7 @@
 		42587858 - Murillo Joel
 		46292592 - Larriba Pedro Ezequiel 
 		40464246 - Diaz Ortiz  Lucas Javier 
-
 ========================================================= */
-
 USE Com2900G13
 GO
 
@@ -67,36 +65,38 @@ CREATE NONCLUSTERED INDEX IX_Baulera_UF ON bda.Baulera(id_uf);
 --Propietario
 IF OBJECT_ID('bda.Propietario') IS NOT NULL DROP TABLE bda.Propietario;
 CREATE TABLE bda.Propietario (
-  id_propietario INT IDENTITY(1,1) PRIMARY KEY,
-  nombre NVARCHAR(120) NOT NULL,
-  apellido NVARCHAR(120) NOT NULL,
-  dni_cuil VARCHAR(20) NULL,
-  email NVARCHAR(254) NULL,
-  telefono NVARCHAR(50)  NULL
+	ID_Propietario INT IDENTITY(1,1) PRIMARY KEY,
+	Nombre VARCHAR(30),
+	Apellido VARCHAR(30),
+	DNI VARCHAR(15),
+	Email VARCHAR(60),
+	Telefono VARCHAR(15),
+	CVU_CBU VARCHAR(22)
 );
 
 --Inquilino
 IF OBJECT_ID('bda.Inquilino') IS NOT NULL DROP TABLE bda.Inquilino;
 CREATE TABLE bda.Inquilino (
-  id_inquilino INT IDENTITY(1,1) PRIMARY KEY,
-  nombre NVARCHAR(120) NOT NULL,
-  apellido NVARCHAR(120) NOT NULL,
-  dni_cuil VARCHAR(20) NULL,
-  email NVARCHAR(254) NULL,
-  telefono NVARCHAR(50) NULL
+	ID_Inquilino INT IDENTITY(1,1) PRIMARY KEY,
+	Nombre VARCHAR(30),
+	Apellido VARCHAR(30),
+	DNI VARCHAR(15),
+	Email VARCHAR(60),
+	Telefono VARCHAR(15),
+	CVU_CBU VARCHAR(22)
 );
 
 --propietario_en_UF
 IF OBJECT_ID('bda.Propietario_en_UF') IS NOT NULL DROP TABLE bda.Propietario_en_UF;
 CREATE TABLE bda.Propietario_en_UF (
-  id INT IDENTITY(1,1) PRIMARY KEY,
-  id_uf INT NOT NULL,
-  id_prop INT NOT NULL,
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE NULL,
-  CONSTRAINT FK_PeUF_UF  FOREIGN KEY (id_uf)  REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT FK_PeUF_P   FOREIGN KEY (id_prop) REFERENCES bda.Propietario(id_propietario),
-  CONSTRAINT CK_PeUF_RangoFecha CHECK (fecha_fin IS NULL OR fecha_inicio <= fecha_fin)
+	id INT IDENTITY(1,1) PRIMARY KEY,
+	id_uf INT NOT NULL,
+	id_prop INT NOT NULL,
+	fecha_inicio DATE NOT NULL,
+	fecha_fin DATE NULL,
+	CONSTRAINT FK_PeUF_UF  FOREIGN KEY (id_uf)  REFERENCES bda.Unidad_Funcional(id_unidad),
+	CONSTRAINT FK_PeUF_P   FOREIGN KEY (id_prop) REFERENCES bda.Propietario(id_propietario),
+	CONSTRAINT CK_PeUF_RangoFecha CHECK (fecha_fin IS NULL OR fecha_inicio <= fecha_fin)
 );
 
 --inquilino_en_UF
@@ -200,7 +200,7 @@ CREATE TABLE bda.Gastos_Extraordinarios (
 -- pagos
 IF OBJECT_ID('bda.Pagos') IS NOT NULL DROP TABLE bda.Pagos;
 CREATE TABLE bda.Pagos (
-  id_pago INT PRIMARY KEY NOT NULL,
+id_pago INT PRIMARY KEY NOT NULL,
   fecha_pago DATE NOT NULL,
   cta_origen VARCHAR(22) NOT NULL, -- CVU/CBU
   importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),

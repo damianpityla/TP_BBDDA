@@ -11,6 +11,16 @@
 		46292592 - Larriba Pedro Ezequiel 
 		40464246 - Diaz Ortiz  Lucas Javier 
 ========================================================= */
+USE Com2900G13
+GO
 
 EXEC bda.spImportarPagosConsorciosCsv
 	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
+
+SELECT * FROM bda.pagos
+
+EXEC bda.spImportarPropietariosInquilinosCsv
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilino-propietarios-datos.csv';
+
+SELECT * FROM bda.Propietario
+SELECT * FROM bda.Inquilino
