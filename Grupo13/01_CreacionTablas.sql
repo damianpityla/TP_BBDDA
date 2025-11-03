@@ -71,7 +71,7 @@ CREATE TABLE bda.Propietario (
 	DNI VARCHAR(15),
 	Email VARCHAR(60),
 	Telefono VARCHAR(15),
-	CVU_CBU VARCHAR(22)
+	CVU_CBU VARCHAR(22) UNIQUE
 );
 
 --Inquilino
@@ -83,33 +83,35 @@ CREATE TABLE bda.Inquilino (
 	DNI VARCHAR(15),
 	Email VARCHAR(60),
 	Telefono VARCHAR(15),
-	CVU_CBU VARCHAR(22)
+	CVU_CBU VARCHAR(22) UNIQUE
 );
 
 --propietario_en_UF
 IF OBJECT_ID('bda.Propietario_en_UF') IS NOT NULL DROP TABLE bda.Propietario_en_UF;
 CREATE TABLE bda.Propietario_en_UF (
-	id INT IDENTITY(1,1) PRIMARY KEY,
-	id_uf INT NOT NULL,
-	id_prop INT NOT NULL,
-	fecha_inicio DATE NOT NULL,
-	fecha_fin DATE NULL,
-	CONSTRAINT FK_PeUF_UF  FOREIGN KEY (id_uf)  REFERENCES bda.Unidad_Funcional(id_unidad),
-	CONSTRAINT FK_PeUF_P   FOREIGN KEY (id_prop) REFERENCES bda.Propietario(id_propietario),
-	CONSTRAINT CK_PeUF_RangoFecha CHECK (fecha_fin IS NULL OR fecha_inicio <= fecha_fin)
+	ID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	CVU_CBU_Propietario VARCHAR(22) NOT NULL,
+	--ID_UF INT NOT NULL,
+	Nombre_Consorcio VARCHAR(20),
+    NroUF TINYINT,
+    Piso VARCHAR(2),
+    Departamento CHAR(1),
+	CONSTRAINT FK_PeUF_P FOREIGN KEY (CVU_CBU_Propietario) REFERENCES bda.Propietario(CVU_CBU)
+	--CONSTRAINT FK_PeUF_UF  FOREIGN KEY (ID_UF)  REFERENCES bda.Unidad_Funcional(id_unidad),
 );
 
 --inquilino_en_UF
 IF OBJECT_ID('bda.Inquilino_en_UF') IS NOT NULL DROP TABLE bda.Inquilino_en_UF;
 CREATE TABLE bda.Inquilino_en_UF (
-  id INT IDENTITY(1,1) PRIMARY KEY,
-  id_uf INT NOT NULL,
-  id_inquilino INT NOT NULL,
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE NULL,
-  CONSTRAINT FK_IeUF_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT FK_IeUF_I  FOREIGN KEY (id_inquilino) REFERENCES bda.Inquilino(id_inquilino),
-  CONSTRAINT CK_IeUF_RangoFecha CHECK (fecha_fin IS NULL OR fecha_inicio <= fecha_fin)
+	ID INT IDENTITY(1,1) PRIMARY KEY,
+	CVU_CBU_Inquilino VARCHAR(22),
+	--ID_UF INT NOT NULL,
+	Nombre_Consorcio VARCHAR(20),
+    NroUF TINYINT,
+    Piso VARCHAR(2),
+    Departamento CHAR(1),
+	CONSTRAINT FK_IeUF_I FOREIGN KEY (CVU_CBU_Inquilino) REFERENCES bda.Inquilino(CVU_CBU),
+	--CONSTRAINT FK_PeUF_UF  FOREIGN KEY (ID_UF)  REFERENCES bda.Unidad_Funcional(id_unidad)
 );
 
 --proveedor

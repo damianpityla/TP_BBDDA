@@ -22,6 +22,14 @@ SELECT * FROM bda.pagos
 EXEC bda.spImportarPropietariosInquilinosCsv
 	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilino-propietarios-datos.csv';
 
+SELECT * FROM bda.Propietario
+SELECT * FROM bda.Inquilino
+
+EXEC bda.spImportarPropietariosInquilinosUFCsv
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilino-propietarios-UF.csv';
+
+SELECT * FROM bda.Propietario_en_UF
+SELECT * FROM bda.Inquilino_en_UF
 
 --FALTA PROBAR YA QUE FALTAN UF Y CONSORCIOS
 EXEC bda.spImportarDetalleYGastosDesdeJSON
@@ -29,8 +37,6 @@ EXEC bda.spImportarDetalleYGastosDesdeJSON
 	@Anio = 2025;
 SELECT * FROM bda.Gastos_Ordinarios
 SELECT * FROM bda.Detalle_Expensa
-SELECT * FROM bda.Propietario
-SELECT * FROM bda.Inquilino
 
 exec bda.ImportarUnidadesFuncionales  
 @RutaArchivo= 'C:\Users\User\Documents\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF por consorcio.txt';

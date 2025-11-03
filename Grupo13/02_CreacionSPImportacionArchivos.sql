@@ -327,6 +327,71 @@ BEGIN
 END
 GO
 
+CREATE OR ALTER PROCEDURE bda.spImportarPropietariosInquilinosUFCsv
+	@RutaArchivo NVARCHAR(256)
+AS
+BEGIN
+	SET NOCOUNT ON
+
+	DECLARE @FilasInsertadasPropietarioUF INT,
+			@FilasDuplicadasPropietarioUF INT,
+			@FilasInsertadasInquilinoUF INT,
+			@FilasDuplicadasInquilinoUF INT
+
+	CREATE TABLE #tmpPropietarioInquilinoUF( 
+		CVU_CBU VARCHAR(22),
+        Nombre_Consorcio VARCHAR(20),
+        NroUF TINYINT,
+        Piso VARCHAR(2),
+        Departamento CHAR(1)
+	)
+
+	DECLARE @SQL NVARCHAR(MAX) = ''
+
+	SET @SQL = '
+	BULK INSERT #tmpPropietarioInquilinoUF
+	FROM''' + @RutaArchivo + '''
+	WITH(
+		FIELDTERMINATOR = ''|'',
+		ROWTERMINATOR = ''\n'',
+		CODEPAGE = ''ACP'',
+		FIRSTROW = 2
+	)'
+
+	EXEC sp_executesql @SQL;
+
+	DELETE FROM #tmpPropietarioInquilinoUF WHERE CVU_CBU IS NULL
+
+	INSERT INTO bda.Propietario_en_UF(CVU_CBU_Propietario,Nombre_Consorcio,NroUF,Piso,Departamento)
+	SELECT CVU_CBU,Nombre_Consorcio,NroUF,Piso,Departamento FROM #tmpPropietarioInquilinoUF t1
+	WHERE NOT EXISTS(SELECT CVU_CBU_Propietario FROM bda.Propietario_en_UF t2 WHERE t1.CVU_CBU COLLATE Latin1_General_CI_AI = t2.CVU_CBU_Propietario COLLATE Latin1_General_CI_AI)
+    AND EXISTS(SELECT CVU_CBU FROM bda.Propietario WHERE CVU_CBU COLLATE Latin1_General_CI_AI = t1.CVU_CBU COLLATE Latin1_General_CI_AI)
+
+	SET @FilasInsertadasPropietarioUF = @@ROWCOUNT
+	SET @FilasDuplicadasPropietarioUF = (SELECT COUNT(*) FROM bda.Propietario_en_UF) - @FilasInsertadasPropietarioUF
+
+	INSERT INTO bda.Inquilino_en_UF(CVU_CBU_Inquilino,Nombre_Consorcio,NroUF,Piso,Departamento)
+	SELECT CVU_CBU,Nombre_Consorcio,NroUF,Piso,Departamento FROM #tmpPropietarioInquilinoUF t1
+	WHERE NOT EXISTS(SELECT CVU_CBU_Inquilino FROM bda.Inquilino_en_UF t2 WHERE t1.CVU_CBU COLLATE Latin1_General_CI_AI = t2.CVU_CBU_Inquilino COLLATE Latin1_General_CI_AI)
+	AND EXISTS(SELECT CVU_CBU FROM bda.Inquilino WHERE CVU_CBU COLLATE Latin1_General_CI_AI = t1.CVU_CBU COLLATE Latin1_General_CI_AI)
+
+	SET @FilasInsertadasInquilinoUF = @@ROWCOUNT
+	SET @FilasDuplicadasInquilinoUF = (SELECT COUNT(*) FROM bda.Inquilino) - @FilasInsertadasInquilinoUF
+
+	--SELECT * FROM bda.Propietario_en_UF
+	--DELETE FROM bda.Propietario_en_UF
+
+	--SELECT * FROM bda.Inquilino_en_UF
+	--DELETE FROM bda.Inquilino_en_UF
+
+	PRINT('Se ha importado el archivo de inquilinos y propietarios
+	Filas insertadas en la tabla de propietarios por unidad funcional = ' + CAST(@FilasInsertadasPropietarioUF AS VARCHAR) + '
+	Filas duplicadas en la tabla de propietarios por unidad funcional = ' + CAST(@FilasDuplicadasPropietarioUF AS VARCHAR) + '
+	Filas insertadas en la tabla de inquilinos por unidad funcional = ' + CAST(@FilasInsertadasInquilinoUF AS VARCHAR) + '
+	Filas duplicadas en la tabla de inquilinos por unidad funcional = ' + CAST(@FilasDuplicadasInquilinoUF AS VARCHAR));
+END
+GO
+
 CREATE OR ALTER FUNCTION bda.fn_NormalizarImporte (@valor NVARCHAR(100))
 RETURNS DECIMAL(18,2)
 AS
