@@ -22,5 +22,12 @@ SELECT * FROM bda.pagos
 EXEC bda.spImportarPropietariosInquilinosCsv
 	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilino-propietarios-datos.csv';
 
+
+--FALTA PROBAR YA QUE FALTAN UF Y CONSORCIOS
+EXEC bda.spImportarDetalleYGastosDesdeJSON
+	@RutaArchivo = 'C:\Users\damip\Downloads\consorcios\Servicios.json',
+	@Anio = 2025;
+SELECT * FROM bda.Gastos_Ordinarios
+SELECT * FROM bda.Detalle_Expensa
 SELECT * FROM bda.Propietario
 SELECT * FROM bda.Inquilino

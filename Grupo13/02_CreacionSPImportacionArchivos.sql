@@ -137,3 +137,269 @@ BEGIN
 	Filas duplicadas en la tabla de inquilinos = ' + CAST(@FilasDuplicadasInquilino AS VARCHAR));
 END
 GO
+
+CREATE OR ALTER FUNCTION bda.fn_NormalizarImporte (@valor NVARCHAR(100))
+RETURNS DECIMAL(18,2)
+AS
+BEGIN
+    DECLARE @resultado DECIMAL(18,2);
+    DECLARE @texto NVARCHAR(100);
+    --Si viene NULL devolver 0
+    IF @valor IS NULL OR LTRIM(RTRIM(@valor)) = ''
+        RETURN 0;
+    -- Quitar espacios, signo $, etc.
+    SET @texto = REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(@valor)), ' ', ''), '$', ''), '"', ''), CHAR(160), '');
+
+    -- Reemplazar separadores de miles y decimales
+    -- Detectar cuál es el separador decimal
+    IF (CHARINDEX(',', @texto) > 0 AND CHARINDEX('.', @texto) > 0)
+    BEGIN
+        -- Si hay ambos, asumir que el último separador es el decimal
+        IF CHARINDEX('.', REVERSE(@texto)) < CHARINDEX(',', REVERSE(@texto))
+            SET @texto = REPLACE(REPLACE(@texto, '.', ''), ',', '.');
+        ELSE
+            SET @texto = REPLACE(REPLACE(@texto, ',', ''), '.', '.');
+    END
+    ELSE IF CHARINDEX(',', @texto) > 0
+        SET @texto = REPLACE(@texto, ',', '.');
+    ELSE
+        SET @texto = REPLACE(@texto, '.', '.');  -- ya correcto
+
+    -- Convertir a número (si falla, devuelve 0)
+    SET @resultado = TRY_CAST(@texto AS DECIMAL(18,2));
+
+    RETURN ISNULL(@resultado, 0);
+END;
+GO
+CREATE OR ALTER PROCEDURE bda.spImportarDetalleYGastosDesdeJSON
+	@RutaArchivo NVARCHAR(256),
+	@Anio SMALLINT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @JSON NVARCHAR(MAX);
+	DECLARE @SQL NVARCHAR(MAX) = '';
+
+	--Crear tabla temporal para leer el JSON
+	IF OBJECT_ID('tempdb..#tmpJson') IS NOT NULL DROP TABLE #tmpJson;
+	CREATE TABLE #tmpJson (BulkColumn NVARCHAR(MAX));
+
+	--SQL dinámico con la ruta
+	SET @SQL = '
+	INSERT INTO #tmpJson (BulkColumn)
+	SELECT BulkColumn
+	FROM OPENROWSET(
+		BULK ''' + @RutaArchivo + ''',
+		SINGLE_CLOB
+	) AS j;';
+
+	EXEC sp_executesql @SQL;
+
+	-- Pasar el JSON a variable
+	SELECT TOP(1) @JSON = BulkColumn FROM #tmpJson;
+
+	IF @JSON IS NULL OR LEN(@JSON) = 0
+	BEGIN
+		PRINT 'El archivo JSON está vacío o la ruta es incorrecta.';
+		RETURN;
+	END;
+
+    ;WITH DatosBrutos AS (
+        SELECT 
+            JSON_VALUE(value, '$."Nombre del consorcio"') AS Consorcio,
+            LTRIM(RTRIM(LOWER(JSON_VALUE(value, '$.Mes')))) AS MesTxt,
+            JSON_VALUE(value, '$.BANCARIOS') AS sBancarios,
+            JSON_VALUE(value, '$.LIMPIEZA') AS sLimpieza,
+            JSON_VALUE(value, '$.ADMINISTRACION') AS sAdministracion,
+            JSON_VALUE(value, '$.SEGUROS') AS sSeguros,
+            JSON_VALUE(value, '$."GASTOS GENERALES"') AS sGastosGrales,
+            JSON_VALUE(value, '$."SERVICIOS PUBLICOS-Agua"') AS sAgua,
+            JSON_VALUE(value, '$."SERVICIOS PUBLICOS-Luz"') AS sLuz
+        FROM OPENJSON(@JSON)
+    ),
+    DatosMes AS (
+        SELECT
+            Consorcio,
+            CASE 
+                WHEN MesTxt LIKE 'enero%' THEN 1
+                WHEN MesTxt LIKE 'febrero%' THEN 2
+                WHEN MesTxt LIKE 'marzo%' THEN 3
+                WHEN MesTxt LIKE 'abril%' THEN 4
+                WHEN MesTxt LIKE 'mayo%' THEN 5
+                WHEN MesTxt LIKE 'junio%' THEN 6
+                WHEN MesTxt LIKE 'julio%' THEN 7
+                WHEN MesTxt LIKE 'agosto%' THEN 8
+                WHEN MesTxt LIKE 'septiembre%' THEN 9
+                WHEN MesTxt LIKE 'setiembre%' THEN 9
+                WHEN MesTxt LIKE 'octubre%' THEN 10
+                WHEN MesTxt LIKE 'noviembre%' THEN 11
+                WHEN MesTxt LIKE 'diciembre%' THEN 12
+                ELSE NULL
+            END AS Mes,
+            sBancarios, sLimpieza, sAdministracion, sSeguros, sGastosGrales, sAgua, sLuz
+        FROM DatosBrutos
+    ),
+    Datos AS (
+        SELECT 
+            d.Consorcio,
+            d.Mes,
+            bda.fn_NormalizarImporte(d.sBancarios) AS Bancarios,
+            bda.fn_NormalizarImporte(d.sLimpieza) AS Limpieza,
+            bda.fn_NormalizarImporte(d.sAdministracion) AS Administracion,
+            bda.fn_NormalizarImporte(d.sSeguros) AS Seguros,
+            bda.fn_NormalizarImporte(d.sGastosGrales) AS GastosGenerales,
+            bda.fn_NormalizarImporte(d.sAgua) AS Agua,
+            bda.fn_NormalizarImporte(d.sLuz) AS Luz
+        FROM DatosMes d
+        WHERE d.Consorcio IS NOT NULL AND d.Mes BETWEEN 1 AND 12
+    )
+    INSERT INTO bda.Expensa (id_consorcio, mes, anio, fecha_emision, vencimiento1, vencimiento2)
+    SELECT c.id_consorcio, d.Mes, @Anio,
+           DATEFROMPARTS(@Anio, d.Mes, 1),
+           DATEFROMPARTS(@Anio, d.Mes, 10),
+           DATEFROMPARTS(@Anio, d.Mes, 20)
+    FROM Datos d
+    JOIN bda.Consorcio c ON c.nombre = d.Consorcio
+    WHERE NOT EXISTS (
+        SELECT 1 FROM bda.Expensa e
+        WHERE e.id_consorcio = c.id_consorcio AND e.mes = d.Mes AND e.anio = @Anio
+    );
+
+    ;WITH DatosBrutos AS (
+        SELECT 
+            JSON_VALUE(value, '$."Nombre del consorcio"') AS Consorcio,
+            LTRIM(RTRIM(LOWER(JSON_VALUE(value, '$.Mes')))) AS MesTxt,
+            JSON_VALUE(value, '$.BANCARIOS') AS sBancarios,
+            JSON_VALUE(value, '$.LIMPIEZA') AS sLimpieza,
+            JSON_VALUE(value, '$.ADMINISTRACION') AS sAdministracion,
+            JSON_VALUE(value, '$.SEGUROS') AS sSeguros,
+            JSON_VALUE(value, '$."GASTOS GENERALES"') AS sGastosGrales,
+            JSON_VALUE(value, '$."SERVICIOS PUBLICOS-Agua"') AS sAgua,
+            JSON_VALUE(value, '$."SERVICIOS PUBLICOS-Luz"') AS sLuz
+        FROM OPENJSON(@JSON)
+    ),
+    DatosMes AS (
+        SELECT
+            Consorcio,
+            CASE 
+                WHEN MesTxt LIKE 'enero%' THEN 1
+                WHEN MesTxt LIKE 'febrero%' THEN 2
+                WHEN MesTxt LIKE 'marzo%' THEN 3
+                WHEN MesTxt LIKE 'abril%' THEN 4
+                WHEN MesTxt LIKE 'mayo%' THEN 5
+                WHEN MesTxt LIKE 'junio%' THEN 6
+                WHEN MesTxt LIKE 'julio%' THEN 7
+                WHEN MesTxt LIKE 'agosto%' THEN 8
+                WHEN MesTxt LIKE 'septiembre%' THEN 9
+                WHEN MesTxt LIKE 'setiembre%' THEN 9
+                WHEN MesTxt LIKE 'octubre%' THEN 10
+                WHEN MesTxt LIKE 'noviembre%' THEN 11
+                WHEN MesTxt LIKE 'diciembre%' THEN 12
+                ELSE NULL
+            END AS Mes,
+            sBancarios, sLimpieza, sAdministracion, sSeguros, sGastosGrales, sAgua, sLuz
+        FROM DatosBrutos
+    ),
+    Datos AS (
+        SELECT 
+            d.Consorcio,
+            d.Mes,
+            bda.fn_NormalizarImporte(d.sBancarios) AS Bancarios,
+            bda.fn_NormalizarImporte(d.sLimpieza) AS Limpieza,
+            bda.fn_NormalizarImporte(d.sAdministracion) AS Administracion,
+            bda.fn_NormalizarImporte(d.sSeguros) AS Seguros,
+            bda.fn_NormalizarImporte(d.sGastosGrales) AS GastosGenerales,
+            bda.fn_NormalizarImporte(d.sAgua) AS Agua,
+            bda.fn_NormalizarImporte(d.sLuz) AS Luz
+        FROM DatosMes d
+        WHERE d.Consorcio IS NOT NULL AND d.Mes BETWEEN 1 AND 12
+    )
+    INSERT INTO bda.Detalle_Expensa (id_expensa, id_uf, saldo_anterior, valor_ordinarias, valor_extraordinarias)
+    SELECT e.id_expensa, uf.id_unidad, 0, 0, 0
+    FROM Datos d
+    JOIN bda.Consorcio c ON c.nombre = d.Consorcio
+    JOIN bda.Expensa e ON e.id_consorcio = c.id_consorcio AND e.mes = d.Mes AND e.anio = @Anio
+    JOIN bda.Unidad_Funcional uf ON uf.id_consorcio = c.id_consorcio
+    WHERE NOT EXISTS (
+        SELECT 1 FROM bda.Detalle_Expensa de
+        WHERE de.id_expensa = e.id_expensa AND de.id_uf = uf.id_unidad
+    );
+
+    ;WITH DatosBrutos AS (
+        SELECT 
+            JSON_VALUE(value, '$."Nombre del consorcio"') AS Consorcio,
+            LTRIM(RTRIM(LOWER(JSON_VALUE(value, '$.Mes')))) AS MesTxt,
+            JSON_VALUE(value, '$.BANCARIOS') AS sBancarios,
+            JSON_VALUE(value, '$.LIMPIEZA') AS sLimpieza,
+            JSON_VALUE(value, '$.ADMINISTRACION') AS sAdministracion,
+            JSON_VALUE(value, '$.SEGUROS') AS sSeguros,
+            JSON_VALUE(value, '$."GASTOS GENERALES"') AS sGastosGrales,
+            JSON_VALUE(value, '$."SERVICIOS PUBLICOS-Agua"') AS sAgua,
+            JSON_VALUE(value, '$."SERVICIOS PUBLICOS-Luz"') AS sLuz
+        FROM OPENJSON(@JSON)
+    ),
+    DatosMes AS (
+        SELECT
+            Consorcio,
+            CASE 
+                WHEN MesTxt LIKE 'enero%' THEN 1
+                WHEN MesTxt LIKE 'febrero%' THEN 2
+                WHEN MesTxt LIKE 'marzo%' THEN 3
+                WHEN MesTxt LIKE 'abril%' THEN 4
+                WHEN MesTxt LIKE 'mayo%' THEN 5
+                WHEN MesTxt LIKE 'junio%' THEN 6
+                WHEN MesTxt LIKE 'julio%' THEN 7
+                WHEN MesTxt LIKE 'agosto%' THEN 8
+                WHEN MesTxt LIKE 'septiembre%' THEN 9
+                WHEN MesTxt LIKE 'setiembre%' THEN 9
+                WHEN MesTxt LIKE 'octubre%' THEN 10
+                WHEN MesTxt LIKE 'noviembre%' THEN 11
+                WHEN MesTxt LIKE 'diciembre%' THEN 12
+                ELSE NULL
+            END AS Mes,
+            sBancarios, sLimpieza, sAdministracion, sSeguros, sGastosGrales, sAgua, sLuz
+        FROM DatosBrutos
+    ),
+    Datos AS (
+        SELECT 
+            d.Consorcio,
+            d.Mes,
+            bda.fn_NormalizarImporte(d.sBancarios) AS Bancarios,
+            bda.fn_NormalizarImporte(d.sLimpieza) AS Limpieza,
+            bda.fn_NormalizarImporte(d.sAdministracion) AS Administracion,
+            bda.fn_NormalizarImporte(d.sSeguros) AS Seguros,
+            bda.fn_NormalizarImporte(d.sGastosGrales) AS GastosGenerales,
+            bda.fn_NormalizarImporte(d.sAgua) AS Agua,
+            bda.fn_NormalizarImporte(d.sLuz) AS Luz
+        FROM DatosMes d
+        WHERE d.Consorcio IS NOT NULL AND d.Mes BETWEEN 1 AND 12
+    ),
+    Rubros AS (
+        SELECT
+            d.Consorcio, d.Mes, r.Rubro, r.Monto
+        FROM Datos d
+        CROSS APPLY (VALUES
+            (N'BANCARIOS',               d.Bancarios),
+            (N'LIMPIEZA',                d.Limpieza),
+            (N'ADMINISTRACION',          d.Administracion),
+            (N'SEGUROS',                 d.Seguros),
+            (N'GASTOS GENERALES',        d.GastosGenerales),
+            (N'SERVICIOS PUBLICOS-Agua', d.Agua),
+            (N'SERVICIOS PUBLICOS-Luz',  d.Luz)
+        ) AS r(Rubro, Monto)
+        WHERE r.Monto IS NOT NULL AND r.Monto <> 0
+    )
+    INSERT INTO bda.Gastos_Ordinarios (id_detalle, id_proveedor, tipo_gasto, nro_factura, importe)
+    SELECT 
+        de.id_detalle,
+        NULL,
+        r.Rubro,
+        NULL,
+        ROUND(r.Monto * (uf.porcentaje / 100.0), 2)
+    FROM Rubros r
+    JOIN bda.Consorcio c ON c.nombre = r.Consorcio
+    JOIN bda.Expensa e   ON e.id_consorcio = c.id_consorcio AND e.mes = r.Mes AND e.anio = @Anio
+    JOIN bda.Unidad_Funcional uf ON uf.id_consorcio = c.id_consorcio
+    JOIN bda.Detalle_Expensa de  ON de.id_expensa = e.id_expensa AND de.id_uf = uf.id_unidad;
+END;
+GO
