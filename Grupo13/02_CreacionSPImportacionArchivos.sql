@@ -657,3 +657,54 @@ BEGIN
     JOIN bda.Detalle_Expensa de  ON de.id_expensa = e.id_expensa AND de.id_uf = uf.id_unidad;
 END;
 GO
+
+/* CREATE OR ALTER PROCEDURE bda.importarDatosVariosConsorcios
+    @rutaArchivo NVARCHAR(256),
+    @nombreHoja NVARCHAR(256)
+AS
+BEGIN
+    SET NOCOUNT ON; */
+
+    sp_configure 'show advanced options', 1;
+    RECONFIGURE;
+    GO
+    sp_configure 'Ad Hoc Distributed Queries', 1;
+    RECONFIGURE;
+    GO
+
+    EXEC master.dbo.sp_MSset_oledb_prop 
+    N'Microsoft.ACE.OLEDB.16.0', 
+    N'AllowInProcess', 1;
+    
+    EXEC master.dbo.sp_MSset_oledb_prop 
+    N'Microsoft.ACE.OLEDB.16.0', 
+    N'DynamicParameters', 1;
+    GO
+
+
+    --TABLA TEMPORAL
+    CREATE TABLE #TmpDatosVarios(
+    Consorcio VARCHAR(15),
+    Nombre_Consorcio VARCHAR(20),
+    Domicilio VARCHAR(20),
+    Unidades_Funcionales INT,
+    m2_Totales INT
+    );
+
+   /* DECLARE @SQL NVARCHAR(MAX);
+
+    SET @SQL =*/
+    INSERT INTO #TmpDatosVarios
+    SELECT
+        [Consorcio],
+        [Nombre del consorcio],
+        [Domicilio],
+        [Cant unidades funcionales],
+        [m2 totales]
+    FROM OPENROWSET(
+        'Microsoft.ACE.OLEDB.16.0',
+        'Excel 12.0 Xml; HDR=YES;IMEX=1;Database=C:\Users\User\Documents\Facultad\Bases de Datos Aplicadas\TP\TP_BBDDA\Grupo13\ArchivosImportacion',
+        'SELECT * FROM [Consorcios$]');
+    /*EXEC sp_executesql @SQL;*/
+--END;
+GO

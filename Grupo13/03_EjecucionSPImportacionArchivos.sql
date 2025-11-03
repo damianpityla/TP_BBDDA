@@ -41,3 +41,26 @@ SELECT * FROM bda.Detalle_Expensa
 exec bda.ImportarUnidadesFuncionales  
 @RutaArchivo= 'C:\Users\User\Documents\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF por consorcio.txt';
 select * from bda.Unidad_Funcional;
+GO
+
+------------------------------ AD HOC PARA IMPORTAR EXCEL -----------------------------
+sp_configure 'show advanced options', 1;
+RECONFIGURE;
+GO
+sp_configure 'Ad Hoc Distributed Queries', 1;
+RECONFIGURE;
+GO
+
+EXEC master.dbo.sp_MSset_oledb_prop 
+    N'Microsoft.ACE.OLEDB.16.0', 
+    N'AllowInProcess', 1;
+    
+EXEC master.dbo.sp_MSset_oledb_prop 
+    N'Microsoft.ACE.OLEDB.16.0', 
+    N'DynamicParameters', 1;
+GO
+
+EXEC bda.importarDatosVariosConsorcios
+@rutaArchivo = 'C:\Users\User\Documents\Facultad\Bases de Datos Aplicadas\TP\TP_BBDDA\Grupo13\ArchivosImportacion',
+@nombreHoja = 'Consorcios$';
+SELECT * FROM bda.Consorcios
