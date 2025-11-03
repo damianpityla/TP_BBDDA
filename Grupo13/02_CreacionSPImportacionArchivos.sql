@@ -15,6 +15,195 @@
 USE Com2900G13
 GO
 
+CREATE OR ALTER PROCEDURE bda.ImportarUnidadesFuncionales
+    @RutaArchivo NVARCHAR(256)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @FilasInsertadas INT,
+            @FilasDuplicadas INT;
+
+    -- TABLA TEMPORAL PARA CARGAR EL ARCHIVO
+    CREATE TABLE #tmpUFxCONS( 
+        Nombre_consorcio NVARCHAR(100),
+        nroUnidadFuncional NVARCHAR(20),
+        Piso NVARCHAR(20),
+        departamento NVARCHAR(20),
+        coeficiente NVARCHAR(20),
+        m2_unidad_funcional NVARCHAR(20),
+        bauleras NVARCHAR(10),
+        cochera NVARCHAR(10),
+        m2_baulera NVARCHAR(20),
+        m2_cochera NVARCHAR(20)
+    );
+
+    DECLARE @SQL NVARCHAR(MAX) = '';
+
+    SET @SQL = '
+    BULK INSERT #tmpUFxCONS
+    FROM ''' + @RutaArchivo + '''
+    WITH(
+        FIELDTERMINATOR = ''\t'',
+        ROWTERMINATOR = ''\n'',
+        CODEPAGE = ''65001'',
+        FIRSTROW = 2
+    )';
+
+    EXEC sp_executesql @SQL;
+
+    -- Eliminamos filas vacías
+    DELETE FROM #tmpUFxCONS WHERE nroUnidadFuncional IS NULL;
+
+    -- Insertamos en Unidad_Funcional validando que el consorcio exista
+    INSERT INTO bda.Unidad_Funcional(
+        id_unidad,
+        id_consorcio,
+        piso,
+        depto,
+        porcentaje,
+        superficie,
+        tiene_baulera,
+        tiene_cochera
+    )
+    SELECT 
+        CASE 
+            WHEN t1.nroUnidadFuncional LIKE '%[0-9]%' 
+            THEN CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
+            ELSE NULL 
+        END AS id_unidad,
+        c.id_consorcio,  -- Se obtiene dinámicamente
+        t1.Piso,
+        t1.departamento,
+        CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(6,4)),
+        CASE 
+            WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
+            THEN CAST(REPLACE(REPLACE(t1.m2_unidad_funcional, ' ', ''), CHAR(160), '') AS DECIMAL(10,2))
+            ELSE 0 
+        END AS superficie,
+        CASE WHEN UPPER(t1.bauleras) = 'SI' THEN 1 ELSE 0 END AS tiene_baulera,
+        CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END AS tiene_cochera
+    FROM #tmpUFxCONS t1
+    INNER JOIN bda.Consorcio c ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM bda.Unidad_Funcional t2 
+        WHERE t2.id_unidad = 
+            TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
+          AND t2.id_consorcio = c.id_consorcio
+    );
+
+    SET @FilasInsertadas = @@ROWCOUNT;
+
+    SET @FilasDuplicadas = (
+        SELECT COUNT(*) 
+        FROM #tmpUFxCONS t1
+        INNER JOIN bda.Consorcio c 
+		ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI) - @FilasInsertadas;
+
+    PRINT('Se ha importado el archivo de unidades funcionales por consorcio
+    Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
+    Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
+END;
+GO
+CREATE OR ALTER PROCEDURE bda.ImportarUnidadesFuncionales
+    @RutaArchivo NVARCHAR(256)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @FilasInsertadas INT,
+            @FilasDuplicadas INT;
+
+    -- TABLA TEMPORAL PARA CARGAR EL ARCHIVO
+    CREATE TABLE #tmpUFxCONS( 
+        Nombre_consorcio NVARCHAR(100),
+        nroUnidadFuncional NVARCHAR(20),
+        Piso NVARCHAR(20),
+        departamento NVARCHAR(20),
+        coeficiente NVARCHAR(20),
+        m2_unidad_funcional NVARCHAR(20),
+        bauleras NVARCHAR(10),
+        cochera NVARCHAR(10),
+        m2_baulera NVARCHAR(20),
+        m2_cochera NVARCHAR(20)
+    );
+
+    DECLARE @SQL NVARCHAR(MAX) = '';
+
+    SET @SQL = '
+    BULK INSERT #tmpUFxCONS
+    FROM ''' + @RutaArchivo + '''
+    WITH(
+        FIELDTERMINATOR = ''\t'',
+        ROWTERMINATOR = ''\n'',
+        CODEPAGE = ''65001'',
+        FIRSTROW = 2
+    )';
+
+    EXEC sp_executesql @SQL;
+
+    -- Eliminamos filas vacías
+    DELETE FROM #tmpUFxCONS WHERE nroUnidadFuncional IS NULL;
+
+    -- Insertamos en Unidad_Funcional validando que el consorcio exista
+    INSERT INTO bda.Unidad_Funcional(
+        id_unidad,
+        id_consorcio,
+        piso,
+        depto,
+        porcentaje,
+        superficie,
+        tiene_baulera,
+        tiene_cochera
+    )
+    SELECT 
+        CASE 
+            WHEN t1.nroUnidadFuncional LIKE '%[0-9]%' 
+            THEN CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
+            ELSE NULL 
+        END AS id_unidad,
+        c.id_consorcio,  -- Se obtiene dinámicamente
+        t1.Piso,
+        t1.departamento,
+        CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(6,4)),
+        CASE 
+            WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
+            THEN CAST(REPLACE(REPLACE(t1.m2_unidad_funcional, ' ', ''), CHAR(160), '') AS DECIMAL(10,2))
+            ELSE 0 
+        END AS superficie,
+        CASE WHEN UPPER(t1.bauleras) = 'SI' THEN 1 ELSE 0 END AS tiene_baulera,
+        CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END AS tiene_cochera
+    FROM #tmpUFxCONS t1
+    INNER JOIN bda.Consorcio c ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM bda.Unidad_Funcional t2 
+        WHERE t2.id_unidad = 
+            TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
+          AND t2.id_consorcio = c.id_consorcio
+    );
+
+    SET @FilasInsertadas = @@ROWCOUNT;
+
+    SET @FilasDuplicadas = (
+        SELECT COUNT(*) 
+        FROM #tmpUFxCONS t1
+        INNER JOIN bda.Consorcio c 
+		ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI) - @FilasInsertadas;
+
+    PRINT('Se ha importado el archivo de unidades funcionales por consorcio
+    Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
+    Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
+END;
+GO
+
+
+
+
+
+
+
 CREATE OR ALTER PROCEDURE bda.spImportarPagosConsorciosCsv 
 	@RutaArchivo NVARCHAR(256)
 AS

@@ -31,3 +31,7 @@ SELECT * FROM bda.Gastos_Ordinarios
 SELECT * FROM bda.Detalle_Expensa
 SELECT * FROM bda.Propietario
 SELECT * FROM bda.Inquilino
+
+exec bda.ImportarUnidadesFuncionales  
+@RutaArchivo= 'C:\Users\User\Documents\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF por consorcio.txt';
+select * from bda.Unidad_Funcional;
