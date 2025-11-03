@@ -20,9 +20,8 @@ CREATE TABLE bda.Consorcio (
   id_consorcio INT IDENTITY(1,1) PRIMARY KEY,
   nombre NVARCHAR(200) NOT NULL,
   direccion NVARCHAR(200) NOT NULL,
-  cuit VARCHAR(13) NULL,
-  correo NVARCHAR(254) NULL,
-  telefono NVARCHAR(50) NULL,
+  cant_unidades_func INT NOT NULL,
+  m2_totales INT NOT NULL
 );
 
 -- Unidad_Funcional

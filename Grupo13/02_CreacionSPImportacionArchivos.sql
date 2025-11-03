@@ -658,29 +658,29 @@ BEGIN
 END;
 GO
 
-/* CREATE OR ALTER PROCEDURE bda.importarDatosVariosConsorcios
+sp_configure 'show advanced options', 1;
+RECONFIGURE;
+GO
+sp_configure 'Ad Hoc Distributed Queries', 1;
+RECONFIGURE;
+GO
+
+EXEC master.dbo.sp_MSset_oledb_prop 
+N'Microsoft.ACE.OLEDB.16.0', 
+N'AllowInProcess', 1;
+    
+EXEC master.dbo.sp_MSset_oledb_prop 
+N'Microsoft.ACE.OLEDB.16.0', 
+N'DynamicParameters', 1;
+GO
+
+
+CREATE OR ALTER PROCEDURE bda.importarDatosVariosConsorcios
     @rutaArchivo NVARCHAR(256),
     @nombreHoja NVARCHAR(256)
 AS
 BEGIN
-    SET NOCOUNT ON; */
-
-    sp_configure 'show advanced options', 1;
-    RECONFIGURE;
-    GO
-    sp_configure 'Ad Hoc Distributed Queries', 1;
-    RECONFIGURE;
-    GO
-
-    EXEC master.dbo.sp_MSset_oledb_prop 
-    N'Microsoft.ACE.OLEDB.16.0', 
-    N'AllowInProcess', 1;
-    
-    EXEC master.dbo.sp_MSset_oledb_prop 
-    N'Microsoft.ACE.OLEDB.16.0', 
-    N'DynamicParameters', 1;
-    GO
-
+    SET NOCOUNT ON;
 
     --TABLA TEMPORAL
     CREATE TABLE #TmpDatosVarios(
@@ -691,9 +691,9 @@ BEGIN
     m2_Totales INT
     );
 
-   /* DECLARE @SQL NVARCHAR(MAX);
+    DECLARE @SQL NVARCHAR(MAX);
 
-    SET @SQL =*/
+    SET @SQL ='
     INSERT INTO #TmpDatosVarios
     SELECT
         [Consorcio],
@@ -702,9 +702,13 @@ BEGIN
         [Cant unidades funcionales],
         [m2 totales]
     FROM OPENROWSET(
-        'Microsoft.ACE.OLEDB.16.0',
-        'Excel 12.0 Xml; HDR=YES;IMEX=1;Database=C:\Users\User\Documents\Facultad\Bases de Datos Aplicadas\TP\TP_BBDDA\Grupo13\ArchivosImportacion',
-        'SELECT * FROM [Consorcios$]');
-    /*EXEC sp_executesql @SQL;*/
---END;
+        ''Microsoft.ACE.OLEDB.16.0'',
+        ''Excel 12.0 Xml; HDR=YES;IMEX=1;Database=' + @rutaArchivo + ''',
+        ''SELECT * FROM [' + @nombreHoja + ']'');';
+    EXEC sp_executesql @SQL;
+
+    INSERT INTO bda.Consorcio(nombre, direccion, cant_unidades_func, m2_totales)
+    SELECT Nombre_Consorcio, Domicilio, Unidades_Funcionales, m2_Totales FROM #TmpDatosVarios t2
+    WHERE NOT EXISTS (SELECT nombre FROM bda.Consorcio t1 where t1.nombre COLLATE Latin1_General_CI_AI = t2.Nombre_Consorcio COLLATE Latin1_General_CI_AI)
+END;
 GO

@@ -61,6 +61,6 @@ EXEC master.dbo.sp_MSset_oledb_prop
 GO
 
 EXEC bda.importarDatosVariosConsorcios
-@rutaArchivo = 'C:\Users\User\Documents\Facultad\Bases de Datos Aplicadas\TP\TP_BBDDA\Grupo13\ArchivosImportacion',
+@rutaArchivo = 'C:\Users\User\Documents\Facultad\Bases de Datos Aplicadas\TP\TP_BBDDA\Grupo13\ArchivosImportacion\datos varios',
 @nombreHoja = 'Consorcios$';
-SELECT * FROM bda.Consorcios
+SELECT * FROM bda.Consorcio
