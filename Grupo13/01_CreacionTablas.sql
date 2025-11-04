@@ -149,16 +149,17 @@ CREATE INDEX IX_Expensa_Consorcio ON bda.Expensa(id_consorcio);
 -- Detalle_Expensa
 IF OBJECT_ID('bda.Detalle_Expensa') IS NOT NULL DROP TABLE bda.Detalle_Expensa;
 CREATE TABLE bda.Detalle_Expensa (
-  id_detalle INT IDENTITY(1,1) PRIMARY KEY,
-  id_expensa INT NOT NULL,
-  id_uf INT NOT NULL,
-  saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
-  valor_ordinarias DECIMAL(18,2) NOT NULL DEFAULT 0,
-  valor_extraordinarias  DECIMAL(18,2) NOT NULL DEFAULT 0,
-  CONSTRAINT FK_Det_Exp FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa),
-  CONSTRAINT FK_Det_UF  FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT UQ_Detalle UNIQUE (id_expensa, id_uf)
+	id_detalle INT IDENTITY(1,1) PRIMARY KEY,
+	id_expensa INT NOT NULL,
+	id_uf INT NOT NULL,
+	saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
+	valor_ordinarias DECIMAL(18,2) NOT NULL DEFAULT 0,
+	valor_extraordinarias  DECIMAL(18,2) NOT NULL DEFAULT 0,
+	CONSTRAINT FK_Det_Exp FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa),
+	CONSTRAINT FK_Det_UF  FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
+	CONSTRAINT UQ_Detalle UNIQUE (id_expensa, id_uf)
 );
+
 CREATE NONCLUSTERED INDEX IX_Detalle_Expensa_Exp ON bda.Detalle_Expensa(id_expensa);
 CREATE NONCLUSTERED INDEX IX_Detalle_Expensa_UF  ON bda.Detalle_Expensa(id_uf);
 
