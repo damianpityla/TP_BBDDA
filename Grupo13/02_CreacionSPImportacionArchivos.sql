@@ -307,9 +307,152 @@ BEGIN
 END
 GO
 
+------------------------------ Funcion para normalizar numeros -----------------------------------
+
+CREATE OR ALTER FUNCTION bda.fn_NormalizarImporte (@valor NVARCHAR(100))
+RETURNS DECIMAL(18,2)
+AS
+BEGIN
+    DECLARE @resultado DECIMAL(18,2);
+    DECLARE @texto NVARCHAR(100);
+    IF @valor IS NULL OR LTRIM(RTRIM(@valor)) = '' RETURN 0;
+    -- limpiar símbolos no numericos
+    SET @texto = REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(@valor)), ' ', ''), '$', ''), '"', ''), CHAR(160), '');
+
+    DECLARE @len INT = LEN(@texto);
+    DECLARE @i INT = @len;
+    DECLARE @decimalPos INT = 0;
+    DECLARE @ch NCHAR(1);
+
+    -- recorrer de derecha a izquierda para encontrar el ultimo separador
+    WHILE @i > 0
+    BEGIN
+        SET @ch = SUBSTRING(@texto, @i, 1);
+        IF @ch = ',' OR @ch = '.'
+        BEGIN
+            SET @decimalPos = @i;
+            BREAK;
+        END;
+        SET @i -= 1;
+    END;
+
+    -- eliminar todos los separadores
+    SET @texto = REPLACE(REPLACE(@texto, '.', ''), ',', '');
+
+    -- si habia un separador, insertarlo antes de los ultimos dos digitos
+    IF @decimalPos > 0 AND LEN(@texto) > 2
+        SET @texto = STUFF(@texto, LEN(@texto) - 1, 0, '.');
+
+    SET @resultado = TRY_CAST(@texto AS DECIMAL(18,2));
+    RETURN ISNULL(@resultado, 0);
+END;
+GO
+
+
 ------------------------------ SP para importar el detalle de los gastos por mes -----------------------------
 
--- FALTA TERMINAR
+CREATE OR ALTER PROCEDURE bda.spImportarDetalleYGastos
+	@RutaArchivo NVARCHAR(256),
+	@Anio SMALLINT = 2025 --ya que los datos no vienen con año
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @JSON NVARCHAR(MAX);
+
+	DECLARE @SQL NVARCHAR(MAX);
+
+	
+	IF OBJECT_ID('tempdb..#tmpJson') IS NOT NULL DROP TABLE #tmpJson;
+	CREATE TABLE #tmpJson (BulkColumn NVARCHAR(MAX)); --creo tabla para meter el json como texto plano
+	SET @SQL = '
+	INSERT INTO #tmpJson (BulkColumn)
+	SELECT BulkColumn
+	FROM OPENROWSET(
+	    BULK ''' + @RutaArchivo + ''',
+	    SINGLE_CLOB
+	) AS j;';
+	
+	EXEC sp_executesql @SQL;
+
+	-- Pasar el texto del archivo a la variable
+	SELECT TOP(1) @JSON = BulkColumn FROM #tmpJson;
+
+	IF OBJECT_ID('tempdb..#tmpCarga') IS NOT NULL DROP TABLE #tmpCarga;
+	CREATE TABLE #tmpCarga(
+		nombreConsorcio NVARCHAR(255),
+        mes NVARCHAR(60),
+        bancarios NVARCHAR(60),
+        limpieza NVARCHAR(60),
+        administracion NVARCHAR(60),
+        seguros NVARCHAR(60),
+        gastosGenerales NVARCHAR(60),
+        sAgua NVARCHAR(60),
+        sLuz NVARCHAR(60),
+        sInternet NVARCHAR(60)
+	)--cargamos en la tabla temporal
+		INSERT INTO #tmpCarga(nombreConsorcio,mes,bancarios,limpieza,administracion,seguros,gastosGenerales,sAgua,sLuz,sInternet)
+	SELECT 
+		nombreConsorcio,
+		mes,
+		bda.fn_NormalizarImporte(bancarios),
+		bda.fn_NormalizarImporte(limpieza),
+		bda.fn_NormalizarImporte(administracion),
+		bda.fn_NormalizarImporte(seguros),
+		bda.fn_NormalizarImporte(gastosGenerales),
+		bda.fn_NormalizarImporte(sAgua),
+		bda.fn_NormalizarImporte(sLuz),
+		bda.fn_NormalizarImporte(sInternet)
+	FROM OPENJSON(@JSON)
+	WITH (
+		nombreConsorcio NVARCHAR(255) '$."Nombre del consorcio"',
+		mes NVARCHAR(60) '$.Mes',
+		bancarios NVARCHAR(60) '$.BANCARIOS',
+		limpieza NVARCHAR(60) '$.LIMPIEZA',
+		administracion NVARCHAR(60) '$.ADMINISTRACION',
+		seguros NVARCHAR(60) '$.SEGUROS',
+		gastosGenerales NVARCHAR(60) '$."GASTOS GENERALES"',
+		sAgua NVARCHAR(60) '$."SERVICIOS PUBLICOS-Agua"',
+		sLuz NVARCHAR(60) '$."SERVICIOS PUBLICOS-Luz"',
+		sInternet NVARCHAR(60) '$."SERVICIOS PUBLICOS-Internet"'
+	);
+	INSERT INTO bda.Gastos_Ordinarios (id_consorcio, mes, id_proveedor, tipo_gasto, nro_factura, importe)
+	SELECT 
+		c.id_consorcio,
+		CASE 
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'enero%' THEN 1
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'febrero%' THEN 2
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'marzo%' THEN 3
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'abril%' THEN 4
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'mayo%' THEN 5
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'junio%' THEN 6
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'julio%' THEN 7
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'agosto%' THEN 8
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'septiembre%' THEN 9
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'octubre%' THEN 10
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'noviembre%' THEN 11
+			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'diciembre%' THEN 12
+			ELSE NULL
+		END AS mes,
+		NULL AS id_proveedor,
+		v.tipo_gasto,
+		NULL AS nro_factura,
+		v.importe
+	FROM #tmpCarga t
+	JOIN bda.Consorcio c 
+		ON c.nombre COLLATE Latin1_General_CI_AI = t.nombreConsorcio COLLATE Latin1_General_CI_AI
+	CROSS APPLY (VALUES
+		(N'BANCARIOS', bda.fn_NormalizarImporte(t.bancarios)),
+		(N'LIMPIEZA', bda.fn_NormalizarImporte(t.limpieza)),
+		(N'ADMINISTRACION', bda.fn_NormalizarImporte(t.administracion)),
+		(N'SEGUROS', bda.fn_NormalizarImporte(t.seguros)),
+		(N'GASTOS GENERALES', bda.fn_NormalizarImporte(t.gastosGenerales)),
+		(N'SERVICIOS PUBLICOS-Agua', bda.fn_NormalizarImporte(t.sAgua)),
+		(N'SERVICIOS PUBLICOS-Luz', bda.fn_NormalizarImporte(t.sLuz)),
+		(N'SERVICIOS PUBLICOS-Internet', bda.fn_NormalizarImporte(t.sInternet))
+	) AS v(tipo_gasto, importe)
+	WHERE v.importe IS NOT NULL AND v.importe > 0;
+END;
+GO
 
 ------------------------------ SP para importar los datos de los consorcios -----------------------------
 

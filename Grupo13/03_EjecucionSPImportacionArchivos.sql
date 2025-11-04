@@ -109,10 +109,8 @@ SELECT * FROM bda.Inquilino_en_UF
 
 ------------------------------ GASTOS DE CADA CONSORCIO "servicios.json" -----------------------------
 
---NO ESTA TERMINADO
 EXEC bda.spImportarDetalleYGastos
-	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\servicios.json',
+	@RutaArchivo = 'C:\Users\damip\Downloads\consorcios\Servicios.json',
 	@Anio = 2025;
 
 SELECT * FROM bda.Gastos_Ordinarios
-SELECT * FROM bda.Detalle_Expensa

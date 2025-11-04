@@ -181,12 +181,13 @@ CREATE TABLE bda.Estado_Financiero (
 IF OBJECT_ID('bda.Gastos_Ordinarios') IS NOT NULL DROP TABLE bda.Gastos_Ordinarios;
 CREATE TABLE bda.Gastos_Ordinarios (
   id_gasto_ordinario INT IDENTITY(1,1) PRIMARY KEY,
-  id_detalle INT NOT NULL,
+  id_consorcio INT NOT NULL,
+  mes TINYINT NOT NULL CHECK (mes BETWEEN 1 AND 12),
   id_proveedor INT NULL,
   tipo_gasto NVARCHAR(100) NOT NULL,   -- banco/limpieza/admin/seguros/etc.
   nro_factura NVARCHAR(50) NULL,
   importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),
-  CONSTRAINT FK_GO_detalle FOREIGN KEY (id_detalle) REFERENCES bda.detalle_expensa(id_detalle),
+  CONSTRAINT FK_GO_consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio),
   CONSTRAINT FK_GO_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
 );
 
