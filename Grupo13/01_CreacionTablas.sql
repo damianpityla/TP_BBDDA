@@ -155,6 +155,8 @@ CREATE TABLE bda.Detalle_Expensa (
 	saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
 	valor_ordinarias DECIMAL(18,2) NOT NULL DEFAULT 0,
 	valor_extraordinarias  DECIMAL(18,2) NOT NULL DEFAULT 0,
+	cochera DECIMAL(18,2) NOT NULL DEFAULT 0,
+	baulera DECIMAL(18,2) NOT NULL DEFAULT 0,
 	CONSTRAINT FK_Det_Exp FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa),
 	CONSTRAINT FK_Det_UF  FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
 	CONSTRAINT UQ_Detalle UNIQUE (id_expensa, id_uf)
