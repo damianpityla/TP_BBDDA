@@ -635,8 +635,49 @@ GO
 
 ------------------------------ SP para importar los datos de los proveedores -----------------------------
 
-/*
+CREATE OR ALTER PROCEDURE bda.importarDatosVariosProveedores
+    @RutaArchivo NVARCHAR(256),
+    @NombreHoja NVARCHAR(256)
 
-Parte de Joel
+AS
+BEGIN
+    SET NOCOUNT ON;
 
-*/
+    CREATE TABLE #TmpProveedores(
+        Tipo_de_Gasto NVARCHAR(50),
+        Nombre_Proveedor NVARCHAR(200),
+        NroCuenta NVARCHAR(50),
+        Nombre_de_Consorcio NVARCHAR(200),
+    );
+
+    DECLARE @SQL NVARCHAR(MAX);
+    SET @SQL = '
+        INSERT INTO #TmpProveedores(Tipo_de_Gasto, Nombre_Proveedor, NroCuenta, Nombre_de_Consorcio)
+        SELECT *
+        FROM OPENROWSET(
+        ''Microsoft.ACE.OLEDB.16.0'',
+        ''Excel 12.0 Xml; HDR=YES;IMEX=1;Database=' + @RutaArchivo + ''',
+        ''SELECT * FROM [' + @NombreHoja + ']'');';
+
+    EXEC sp_executesql @SQL;
+
+    INSERT INTO bda.Proveedor(nombre,nro_cuenta)
+    SELECT 
+    CASE 
+        WHEN Nombre_Proveedor LIKE 'Serv. Limpieza' 
+        THEN NroCuenta
+        ELSE  Nombre_Proveedor 
+    END AS Nombre,
+    CASE
+        WHEN Nombre_Proveedor LIKE 'Serv. Limpieza'
+        THEN Null
+        ELSE  LTRIM(REPLACE(NroCuenta, 'cuenta', '')) 
+    END AS Nro_Cuenta
+    FROM #TmpProveedores t
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM bda.Proveedor p
+        WHERE p.nombre COLLATE Latin1_General_CI_AI = t.Nombre_Proveedor COLLATE Latin1_General_CI_AI
+    );
+END;
+GO

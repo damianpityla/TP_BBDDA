@@ -108,8 +108,9 @@ SELECT * FROM bda.Detalle_Expensa
 
 ------------------------------ PROVEEDORES "datos_varios.xlsx" HOJA: Proveedores$ -----------------------------
 
-/*
 
-Parte de Joel
+EXEC bda.importarDatosVariosProveedores
+	@RutaArchivo = 'C:\Users\Joeee\Desktop\TP_BBDDA\Grupo13\ArchivosImportacion\datos_varios.xlsx',
+	@NombreHoja = 'Proveedores$';
 
-*/
+SELECT * FROM bda.Proveedor
