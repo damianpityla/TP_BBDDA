@@ -18,6 +18,7 @@
 USE Com2900G13
 GO
 
+
 -- Consorcio
 IF OBJECT_ID('bda.Consorcio') IS NOT NULL DROP TABLE bda.Consorcio;
 CREATE TABLE bda.Consorcio (
@@ -31,8 +32,9 @@ CREATE TABLE bda.Consorcio (
 -- Unidad_Funcional
 IF OBJECT_ID('bda.Unidad_Funcional') IS NOT NULL DROP TABLE bda.Unidad_Funcional;
 CREATE TABLE bda.Unidad_Funcional (
-  id_unidad INT PRIMARY KEY,
+  id_unidad INT IDENTITY(1,1) PRIMARY KEY,
   id_consorcio INT NOT NULL,
+  numero_unidad int NOT NULL,
   superficie DECIMAL(10,2) NOT NULL CHECK (superficie >= 0),
   piso NVARCHAR(20) NOT NULL,
   depto NVARCHAR(20) NOT NULL,

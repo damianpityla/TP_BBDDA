@@ -1,4 +1,4 @@
-/* =========================================================
+ï»¿/* =========================================================
 	02_CreacionSPImportacionArchivos.sql - Com2900G13
 	Proyecto: Altos de Saint Just
     Materia: Bases de datos aplicada
@@ -8,7 +8,7 @@
 
 	Alumnos:
 		45628269 - Liber Federico Manuel 
-		46265307 - Ares Nicolás jesús 
+		46265307 - Ares NicolÃ¡s jesÃºs 
 		45754471 - Pityla Damian 
 		42587858 - Murillo Joel
 		46292592 - Larriba Pedro Ezequiel 
@@ -77,46 +77,42 @@ BEGIN
 
     EXEC sp_executesql @SQL;
 
-    -- Eliminamos filas vacías
+    -- Eliminamos filas vacÃ­as
     DELETE FROM #tmpUFxCONS WHERE nroUnidadFuncional IS NULL;
 
     -- Insertamos en Unidad_Funcional validando que el consorcio exista
-    INSERT INTO bda.Unidad_Funcional(
-        id_unidad,
-        id_consorcio,
-        piso,
-        depto,
-        porcentaje,
-        superficie,
-        tiene_baulera,
-        tiene_cochera
-    )
-    SELECT 
-        CASE 
-            WHEN t1.nroUnidadFuncional LIKE '%[0-9]%' 
-            THEN CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
-            ELSE NULL 
-        END AS id_unidad,
-        c.id_consorcio,  -- Se obtiene dinámicamente
-        t1.Piso,
-        t1.departamento,
-        CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(6,4)),
-        CASE 
-            WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
-            THEN CAST(REPLACE(REPLACE(t1.m2_unidad_funcional, ' ', ''), CHAR(160), '') AS DECIMAL(10,2))
-            ELSE 0 
-        END AS superficie,
-        CASE WHEN UPPER(t1.bauleras) = 'SI' THEN 1 ELSE 0 END AS tiene_baulera,
-        CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END AS tiene_cochera
-    FROM #tmpUFxCONS t1
-    INNER JOIN bda.Consorcio c ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
-    WHERE NOT EXISTS (
-        SELECT 1 
-        FROM bda.Unidad_Funcional t2 
-        WHERE t2.id_unidad = 
-            TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
-          AND t2.id_consorcio = c.id_consorcio
-    );
+	INSERT INTO bda.Unidad_Funcional(
+	    id_consorcio,
+	    numero_unidad,
+	    piso,
+	    depto,
+	    porcentaje,
+	    superficie,
+	    tiene_baulera,
+	    tiene_cochera
+	)
+	SELECT 
+	    c.id_consorcio,
+	    TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT),
+	    t1.Piso,
+	    t1.departamento,
+	    CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(6,4)),
+	    CASE 
+	        WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
+	        THEN CAST(REPLACE(REPLACE(t1.m2_unidad_funcional, ' ', ''), CHAR(160), '') AS DECIMAL(10,2))
+	        ELSE 0 
+	    END,
+	    CASE WHEN UPPER(t1.bauleras) = 'SI' THEN 1 ELSE 0 END,
+	    CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END
+	FROM #tmpUFxCONS t1
+	JOIN bda.Consorcio c 
+	  ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
+	WHERE NOT EXISTS (
+	    SELECT 1 
+	    FROM bda.Unidad_Funcional t2
+	    WHERE t2.id_consorcio = c.id_consorcio
+	      AND t2.numero_unidad = TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
+	);
 
     SET @FilasInsertadas = @@ROWCOUNT;
 
@@ -134,57 +130,90 @@ GO
 
 ------------------------------ SP para importar los pagos correspondientes a cada unidad funcional -----------------------------
 
-CREATE OR ALTER PROCEDURE bda.spImportarPagosConsorcios
-	@RutaArchivo NVARCHAR(256)
+CREATE OR ALTER PROCEDURE bda.spImportarUnidadesFuncionales
+    @RutaArchivo NVARCHAR(256)
 AS
 BEGIN
-	SET NOCOUNT ON
+    SET NOCOUNT ON;
 
-	DECLARE @FilasInsertadas INT,
-			@FilasDuplicadas INT;
+    DECLARE @FilasInsertadas INT, @FilasDuplicadas INT;
 
-	CREATE TABLE #tmpPagos( 
-		id_pago INT IDENTITY(10000,1) PRIMARY KEY NOT NULL,
-		fecha_pago VARCHAR(10) NOT NULL,
-		cta_origen VARCHAR(22) NOT NULL,
-		importe VARCHAR(12) NOT NULL
-	)
-	/*HAY QUE USAR UNA TABLA TEMPORAL PARA PODER CASTEAR DOS TIPOS DE DATO DEL .CSV:
-	LA FECHA DEL PAGO ESTA EN FORMATO DD/MM/YYYY, EL MOTOR NO LO RECONOCE COMO DATE
-	EL IMPORTE TIENE EL SIGNO $, EL MOTOR NO LO RECONOCE COMO DECIMAL(10,2)
-	ENTONCES LOS TIPOS DE DATO SON VARCHAR*/
+    CREATE TABLE #tmpUFxCONS( 
+        Nombre_consorcio NVARCHAR(100),
+        nroUnidadFuncional NVARCHAR(20),
+        Piso NVARCHAR(20),
+        departamento NVARCHAR(20),
+        coeficiente NVARCHAR(20),
+        m2_unidad_funcional NVARCHAR(20),
+        bauleras NVARCHAR(10),
+        cochera NVARCHAR(10),
+        m2_baulera NVARCHAR(20),
+        m2_cochera NVARCHAR(20)
+    );
 
-	DECLARE @SQL NVARCHAR(MAX) = ''
+    DECLARE @SQL NVARCHAR(MAX) = '
+    BULK INSERT #tmpUFxCONS
+    FROM ''' + @RutaArchivo + '''
+    WITH(
+        FIELDTERMINATOR = ''\t'',
+        ROWTERMINATOR = ''\n'',
+        CODEPAGE = ''65001'',
+        FIRSTROW = 2
+    )';
+    EXEC sp_executesql @SQL;
 
-	SET @SQL = '
-	BULK INSERT #tmpPagos
-	FROM ''' + @RutaArchivo + '''
-	WITH(
-		FIELDTERMINATOR = '','',
-		ROWTERMINATOR = ''\n'',
-		CODEPAGE = ''ACP'',
-		FIRSTROW = 2
-	)'
+    -- 1) limpiar filas vacÃ­as / con espacios
+    DELETE FROM #tmpUFxCONS 
+    WHERE nroUnidadFuncional IS NULL OR LTRIM(RTRIM(nroUnidadFuncional)) = '';
 
-	EXEC sp_executesql @SQL;
-	--USAMOS SQL DINAMICO PARA INSERTAR LA VARIABLE DE LA RUTA DEL ARCHIVO EN EL BULK INSERT
+    INSERT INTO bda.Unidad_Funcional(
+        id_consorcio,
+        numero_unidad,
+        piso,
+        depto,
+        porcentaje,
+        superficie,
+        tiene_baulera,
+        tiene_cochera
+    )
+    SELECT 
+        c.id_consorcio,
+        TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional,' ',''),CHAR(160),'') AS INT),
+        t1.Piso,
+        t1.departamento,
+        -- 2) usar TRY_CAST tras normalizar comaâ†’punto
+        TRY_CAST(REPLACE(t1.coeficiente,',','.') AS DECIMAL(6,4)),
+        CASE 
+            WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
+            THEN TRY_CAST(REPLACE(REPLACE(t1.m2_unidad_funcional,' ',''),CHAR(160),'') AS DECIMAL(10,2))
+            ELSE 0 
+        END,
+        -- 3) comparar sin acentos / case-insensitive
+        CASE WHEN UPPER(t1.bauleras) COLLATE Latin1_General_CI_AI = 'SI' THEN 1 ELSE 0 END,
+        CASE WHEN UPPER(t1.cochera)  COLLATE Latin1_General_CI_AI = 'SI' THEN 1 ELSE 0 END
+    FROM #tmpUFxCONS t1
+    JOIN bda.Consorcio c 
+      ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM bda.Unidad_Funcional t2
+        WHERE t2.id_consorcio = c.id_consorcio
+          AND t2.numero_unidad = TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional,' ',''),CHAR(160),'') AS INT)
+    );
 
-	DELETE FROM #tmpPagos WHERE id_pago IN (SELECT MAX(id_pago) FROM #tmpPagos)
-	--HAY UN REGISTRO EN EL .CSV QUE MARCA EL FIN DE ARCHIVO
+    SET @FilasInsertadas = @@ROWCOUNT;
 
-	INSERT INTO bda.Pagos (id_pago,fecha_pago,cta_origen,importe)
-	SELECT id_pago,CONVERT(date, fecha_pago, 103),cta_origen,REPLACE(importe, '$', '') FROM #tmpPagos t1
-	WHERE NOT EXISTS(SELECT id_pago FROM bda.pagos t2 WHERE t1.id_pago = t2.id_pago)
-	--ENTONCES MODIFICO LOS VARCHAR A MI GUSTO Y LOS INSERTO EN LA TABLA QUE NOS IMPORTA, QUE ES LA DE PAGOS
-	--ADEMAS EVITO LA INSERCION DE DUPLICADOS
+    SET @FilasDuplicadas = (
+        SELECT COUNT(*) 
+        FROM #tmpUFxCONS t1
+        JOIN bda.Consorcio c 
+          ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
+    ) - @FilasInsertadas;
 
-	SET @FilasInsertadas = @@ROWCOUNT
-	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpPagos) - @FilasInsertadas
-
-	PRINT('Se ha importado el archivo de pagos por consorcio
-	Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
-	Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
-END
+    PRINT('Se ha importado el archivo de unidades funcionales por consorcio
+    Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
+    Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
+END;
 GO
 
 ------------------------------ SP para importar los datos de los inquilinos y los propietarios -----------------------------
@@ -326,10 +355,10 @@ BEGIN
     SET @texto = REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(@valor)), ' ', ''), '$', ''), '"', ''), CHAR(160), '');
 
     -- Reemplazar separadores de miles y decimales
-    -- Detectar cuál es el separador decimal
+    -- Detectar cuÃ¡l es el separador decimal
     IF (CHARINDEX(',', @texto) > 0 AND CHARINDEX('.', @texto) > 0)
     BEGIN
-        -- Si hay ambos, asumir que el último separador es el decimal
+        -- Si hay ambos, asumir que el Ãºltimo separador es el decimal
         IF CHARINDEX('.', REVERSE(@texto)) < CHARINDEX(',', REVERSE(@texto))
             SET @texto = REPLACE(REPLACE(@texto, '.', ''), ',', '.');
         ELSE
@@ -340,7 +369,7 @@ BEGIN
     ELSE
         SET @texto = REPLACE(@texto, '.', '.');  -- ya correcto
 
-    -- Convertir a número (si falla, devuelve 0)
+    -- Convertir a nÃºmero (si falla, devuelve 0)
     SET @resultado = TRY_CAST(@texto AS DECIMAL(18,2));
 
     RETURN ISNULL(@resultado, 0);
@@ -362,7 +391,7 @@ BEGIN
 	IF OBJECT_ID('tempdb..#tmpJson') IS NOT NULL DROP TABLE #tmpJson;
 	CREATE TABLE #tmpJson (BulkColumn NVARCHAR(MAX));
 
-	--SQL dinámico con la ruta
+	--SQL dinÃ¡mico con la ruta
 	SET @SQL = '
 	INSERT INTO #tmpJson (BulkColumn)
 	SELECT BulkColumn
@@ -378,7 +407,7 @@ BEGIN
 
 	IF @JSON IS NULL OR LEN(@JSON) = 0
 	BEGIN
-		PRINT 'El archivo JSON está vacío o la ruta es incorrecta.';
+		PRINT 'El archivo JSON estÃ¡ vacÃ­o o la ruta es incorrecta.';
 		RETURN;
 	END;
 
