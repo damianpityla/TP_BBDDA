@@ -622,7 +622,7 @@ BEGIN
 
     INSERT INTO bda.Consorcio(nombre, direccion, cant_unidades_func, m2_totales)
     SELECT Nombre_Consorcio, Domicilio, Unidades_Funcionales, m2_Totales FROM #TmpDatosConsorcios t2
-    WHERE NOT EXISTS (SELECT nombre FROM bda.Consorcio t1 where t1.nombre COLLATE Latin1_General_CI_AI = t2.Nombre_Consorcio COLLATE Latin1_General_CI_AI)
+    WHERE NOT EXISTS (SELECT nombre FROM bda.Consorcio t1 WHERE t1.nombre COLLATE Latin1_General_CI_AI = t2.Nombre_Consorcio COLLATE Latin1_General_CI_AI)
 
     SET @FilasInsertadas = @@ROWCOUNT
 	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpDatosConsorcios) - @FilasInsertadas
@@ -635,38 +635,54 @@ GO
 
 ------------------------------ SP para importar los datos de los proveedores -----------------------------
 
-CREATE OR ALTER PROCEDURE bda.importarDatosVariosProveedores
+CREATE OR ALTER PROCEDURE bda.spImportarDatosProveedores
     @RutaArchivo NVARCHAR(256),
-    @NombreHoja NVARCHAR(256)
-
+    @NombreHoja NVARCHAR(256),
+    @RangoCeldas NVARCHAR(20)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    CREATE TABLE #TmpProveedores(
-        Tipo_de_Gasto NVARCHAR(50),
-        Nombre_Proveedor NVARCHAR(200),
-        NroCuenta NVARCHAR(50),
-        Nombre_de_Consorcio NVARCHAR(200),
+    DECLARE @FilasInsertadas INT,
+			@FilasDuplicadas INT;
+
+    CREATE TABLE #tmpProveedores(
+        servicio VARCHAR(30) NOT NULL,
+	    descripcion VARCHAR(100) NOT NULL,
+	    cuenta VARCHAR(30),
+	    nombre_consorcio VARCHAR(30)
     );
 
     DECLARE @SQL NVARCHAR(MAX);
     SET @SQL = '
-        INSERT INTO #TmpProveedores(Tipo_de_Gasto, Nombre_Proveedor, NroCuenta, Nombre_de_Consorcio)
+        INSERT INTO #tmpProveedores(servicio,descripcion,cuenta,nombre_consorcio)
         SELECT *
         FROM OPENROWSET(
         ''Microsoft.ACE.OLEDB.16.0'',
         ''Excel 12.0 Xml; HDR=YES;IMEX=1;Database=' + @RutaArchivo + ''',
-        ''SELECT * FROM [' + @NombreHoja + ']'');';
+        ''SELECT * FROM [' + @NombreHoja + @RangoCeldas + ']'');';
 
     EXEC sp_executesql @SQL;
 
-    INSERT INTO bda.Proveedor(nombre,nro_cuenta)
-    SELECT 
+    INSERT INTO bda.Proveedor(servicio,descripcion,cuenta,ID_Consorcio)
+        SELECT t.servicio,t.descripcion,t.cuenta,c.id_consorcio FROM #tmpProveedores t
+        INNER JOIN bda.Consorcio c ON c.nombre COLLATE Latin1_General_CI_AI = t.nombre_consorcio COLLATE Latin1_General_CI_AI
+
+    SET @FilasInsertadas = @@ROWCOUNT
+	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpProveedores) - @FilasInsertadas
+
+	PRINT('Se ha importado el archivo de datos los proveedores
+	Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
+	Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
+END;
+GO
+
+/*
+SELECT 
     CASE 
-        WHEN Nombre_Proveedor LIKE 'Serv. Limpieza' 
-        THEN NroCuenta
-        ELSE  Nombre_Proveedor 
+        WHEN servicio LIKE 'Serv. Limpieza' 
+        THEN cuenta
+        ELSE descripcion
     END AS Nombre,
     CASE
         WHEN Nombre_Proveedor LIKE 'Serv. Limpieza'
@@ -679,5 +695,4 @@ BEGIN
         FROM bda.Proveedor p
         WHERE p.nombre COLLATE Latin1_General_CI_AI = t.Nombre_Proveedor COLLATE Latin1_General_CI_AI
     );
-END;
-GO
+*/

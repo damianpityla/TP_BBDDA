@@ -120,14 +120,13 @@ CREATE TABLE bda.Inquilino_en_UF (
 --proveedor
 IF OBJECT_ID('bda.Proveedor') IS NOT NULL DROP TABLE bda.Proveedor;
 CREATE TABLE bda.Proveedor (
-  id_proveedor INT IDENTITY(1,1) PRIMARY KEY,
-  nombre NVARCHAR(200) NOT NULL,
-  cuit VARCHAR(13)   NULL,
-  email NVARCHAR(254) NULL,
-  telefono NVARCHAR(50)  NULL,
-  nro_cuenta NVARCHAR(50)  NULL
+	id_proveedor INT IDENTITY(1,1) PRIMARY KEY,
+	servicio VARCHAR(30) NOT NULL,
+	descripcion VARCHAR(100) NOT NULL,
+	cuenta VARCHAR(30),
+	ID_Consorcio INT,
+	CONSTRAINT FK_Proveedor_Consorcio FOREIGN KEY (ID_Consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );
-CREATE NONCLUSTERED INDEX IX_Proveedor_CUIT ON bda.Proveedor(cuit);
 
 --expensa
 IF OBJECT_ID('bda.Expensa') IS NOT NULL DROP TABLE bda.Expensa;

@@ -108,9 +108,12 @@ SELECT * FROM bda.Detalle_Expensa
 
 ------------------------------ PROVEEDORES "datos_varios.xlsx" HOJA: Proveedores$ -----------------------------
 
+EXEC bda.spImportarDatosProveedores
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\datos_varios.xlsx',
+	@NombreHoja = 'Proveedores$',
+	@RangoCeldas = 'B3:E30';
 
-EXEC bda.importarDatosVariosProveedores
-	@RutaArchivo = 'C:\Users\Joeee\Desktop\TP_BBDDA\Grupo13\ArchivosImportacion\datos_varios.xlsx',
-	@NombreHoja = 'Proveedores$';
+--DBCC CHECKIDENT ('bda.Proveedor', RESEED, 0);
+--DELETE FROM bda.Proveedor
 
 SELECT * FROM bda.Proveedor
