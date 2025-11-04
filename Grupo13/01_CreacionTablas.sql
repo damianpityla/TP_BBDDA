@@ -1,7 +1,10 @@
 /* =========================================================
-	TablasDB.sql - Com2900G13
-	Proyecto: Altos de Saint Just (BDA)
-	Crea tablas, PK/FK y restricciones según DER.
+	01_CreacionTablas.sql - Com2900G13
+	Proyecto: Altos de Saint Just
+	Materia: Bases de datos aplicada
+    Grupo: 13
+
+	Este archivo crea tablas, PK/FK y restricciones segun DER.
 
 	Alumnos:
 		45628269 - Liber Federico Manuel 
@@ -11,6 +14,7 @@
 		46292592 - Larriba Pedro Ezequiel 
 		40464246 - Diaz Ortiz  Lucas Javier 
 ========================================================= */
+
 USE Com2900G13
 GO
 

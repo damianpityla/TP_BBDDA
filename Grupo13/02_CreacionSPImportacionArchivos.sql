@@ -1,6 +1,9 @@
 /* =========================================================
-	02_CreacionSPImportacionArchivos - Com2900G13
-	Proyecto: Altos de Saint Just (BDA)
+	02_CreacionSPImportacionArchivos.sql - Com2900G13
+	Proyecto: Altos de Saint Just
+    Materia: Bases de datos aplicada
+    Grupo: 13
+
 	Este archivo crea los SP para la importacion de datos
 
 	Alumnos:
@@ -15,7 +18,29 @@
 USE Com2900G13
 GO
 
-CREATE OR ALTER PROCEDURE bda.ImportarUnidadesFuncionales
+------------------------------ Activacion de consultas AD-HOC y servidor OLEDB -----------------------------
+
+sp_configure 'show advanced options', 1;
+RECONFIGURE;
+GO
+
+sp_configure 'Ad Hoc Distributed Queries', 1;
+RECONFIGURE;
+GO
+
+EXEC master.dbo.sp_MSset_oledb_prop 
+    N'Microsoft.ACE.OLEDB.16.0', 
+    N'AllowInProcess', 1;
+    
+EXEC master.dbo.sp_MSset_oledb_prop 
+    N'Microsoft.ACE.OLEDB.16.0', 
+    N'DynamicParameters', 1;
+
+GO
+
+------------------------------ SP para importar unidades funcionales -----------------------------
+
+CREATE OR ALTER PROCEDURE bda.spImportarUnidadesFuncionales
     @RutaArchivo NVARCHAR(256)
 AS
 BEGIN
@@ -106,105 +131,10 @@ BEGIN
     Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
 END;
 GO
-CREATE OR ALTER PROCEDURE bda.ImportarUnidadesFuncionales
-    @RutaArchivo NVARCHAR(256)
-AS
-BEGIN
-    SET NOCOUNT ON;
 
-    DECLARE @FilasInsertadas INT,
-            @FilasDuplicadas INT;
+------------------------------ SP para importar los pagos correspondientes a cada unidad funcional -----------------------------
 
-    -- TABLA TEMPORAL PARA CARGAR EL ARCHIVO
-    CREATE TABLE #tmpUFxCONS( 
-        Nombre_consorcio NVARCHAR(100),
-        nroUnidadFuncional NVARCHAR(20),
-        Piso NVARCHAR(20),
-        departamento NVARCHAR(20),
-        coeficiente NVARCHAR(20),
-        m2_unidad_funcional NVARCHAR(20),
-        bauleras NVARCHAR(10),
-        cochera NVARCHAR(10),
-        m2_baulera NVARCHAR(20),
-        m2_cochera NVARCHAR(20)
-    );
-
-    DECLARE @SQL NVARCHAR(MAX) = '';
-
-    SET @SQL = '
-    BULK INSERT #tmpUFxCONS
-    FROM ''' + @RutaArchivo + '''
-    WITH(
-        FIELDTERMINATOR = ''\t'',
-        ROWTERMINATOR = ''\n'',
-        CODEPAGE = ''65001'',
-        FIRSTROW = 2
-    )';
-
-    EXEC sp_executesql @SQL;
-
-    -- Eliminamos filas vacías
-    DELETE FROM #tmpUFxCONS WHERE nroUnidadFuncional IS NULL;
-
-    -- Insertamos en Unidad_Funcional validando que el consorcio exista
-    INSERT INTO bda.Unidad_Funcional(
-        id_unidad,
-        id_consorcio,
-        piso,
-        depto,
-        porcentaje,
-        superficie,
-        tiene_baulera,
-        tiene_cochera
-    )
-    SELECT 
-        CASE 
-            WHEN t1.nroUnidadFuncional LIKE '%[0-9]%' 
-            THEN CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
-            ELSE NULL 
-        END AS id_unidad,
-        c.id_consorcio,  -- Se obtiene dinámicamente
-        t1.Piso,
-        t1.departamento,
-        CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(6,4)),
-        CASE 
-            WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
-            THEN CAST(REPLACE(REPLACE(t1.m2_unidad_funcional, ' ', ''), CHAR(160), '') AS DECIMAL(10,2))
-            ELSE 0 
-        END AS superficie,
-        CASE WHEN UPPER(t1.bauleras) = 'SI' THEN 1 ELSE 0 END AS tiene_baulera,
-        CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END AS tiene_cochera
-    FROM #tmpUFxCONS t1
-    INNER JOIN bda.Consorcio c ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
-    WHERE NOT EXISTS (
-        SELECT 1 
-        FROM bda.Unidad_Funcional t2 
-        WHERE t2.id_unidad = 
-            TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT)
-          AND t2.id_consorcio = c.id_consorcio
-    );
-
-    SET @FilasInsertadas = @@ROWCOUNT;
-
-    SET @FilasDuplicadas = (
-        SELECT COUNT(*) 
-        FROM #tmpUFxCONS t1
-        INNER JOIN bda.Consorcio c 
-		ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI) - @FilasInsertadas;
-
-    PRINT('Se ha importado el archivo de unidades funcionales por consorcio
-    Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
-    Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
-END;
-GO
-
-
-
-
-
-
-
-CREATE OR ALTER PROCEDURE bda.spImportarPagosConsorciosCsv 
+CREATE OR ALTER PROCEDURE bda.spImportarPagosConsorcios
 	@RutaArchivo NVARCHAR(256)
 AS
 BEGIN
@@ -251,16 +181,15 @@ BEGIN
 	SET @FilasInsertadas = @@ROWCOUNT
 	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpPagos) - @FilasInsertadas
 
-	--SELECT * FROM bda.Pagos
-	--DELETE FROM bda.Pagos
-
 	PRINT('Se ha importado el archivo de pagos por consorcio
 	Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
 	Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
 END
 GO
 
-CREATE OR ALTER PROCEDURE bda.spImportarPropietariosInquilinosCsv
+------------------------------ SP para importar los datos de los inquilinos y los propietarios -----------------------------
+
+CREATE OR ALTER PROCEDURE bda.spImportarPropietariosInquilinos
 	@RutaArchivo NVARCHAR(256)
 AS
 BEGIN
@@ -313,12 +242,6 @@ BEGIN
 	SET @FilasInsertadasInquilino = @@ROWCOUNT
 	SET @FilasDuplicadasInquilino = (SELECT COUNT(*) FROM bda.Inquilino) - @FilasInsertadasInquilino
 
-	--SELECT * FROM bda.Propietario
-	--DELETE FROM bda.Propietario
-
-	--SELECT * FROM bda.Inquilino
-	--DELETE FROM bda.Inquilino
-
 	PRINT('Se ha importado el archivo de inquilinos y propietarios
 	Filas insertadas en la tabla de propietarios = ' + CAST(@FilasInsertadasPropietario AS VARCHAR) + '
 	Filas duplicadas en la tabla de propietarios = ' + CAST(@FilasDuplicadasPropietario AS VARCHAR) + '
@@ -327,7 +250,9 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER PROCEDURE bda.spImportarPropietariosInquilinosUFCsv
+------------------------------ SP para importar los datos de los inquilinos y los propietarios en cada unidad funcional -----------------------------
+
+CREATE OR ALTER PROCEDURE bda.spImportarPropietariosInquilinosUF
 	@RutaArchivo NVARCHAR(256)
 AS
 BEGIN
@@ -378,12 +303,6 @@ BEGIN
 	SET @FilasInsertadasInquilinoUF = @@ROWCOUNT
 	SET @FilasDuplicadasInquilinoUF = (SELECT COUNT(*) FROM bda.Inquilino) - @FilasInsertadasInquilinoUF
 
-	--SELECT * FROM bda.Propietario_en_UF
-	--DELETE FROM bda.Propietario_en_UF
-
-	--SELECT * FROM bda.Inquilino_en_UF
-	--DELETE FROM bda.Inquilino_en_UF
-
 	PRINT('Se ha importado el archivo de inquilinos y propietarios
 	Filas insertadas en la tabla de propietarios por unidad funcional = ' + CAST(@FilasInsertadasPropietarioUF AS VARCHAR) + '
 	Filas duplicadas en la tabla de propietarios por unidad funcional = ' + CAST(@FilasDuplicadasPropietarioUF AS VARCHAR) + '
@@ -391,6 +310,8 @@ BEGIN
 	Filas duplicadas en la tabla de inquilinos por unidad funcional = ' + CAST(@FilasDuplicadasInquilinoUF AS VARCHAR));
 END
 GO
+
+------------------------------ Funcion para normalizar el importe -----------------------------
 
 CREATE OR ALTER FUNCTION bda.fn_NormalizarImporte (@valor NVARCHAR(100))
 RETURNS DECIMAL(18,2)
@@ -425,7 +346,10 @@ BEGIN
     RETURN ISNULL(@resultado, 0);
 END;
 GO
-CREATE OR ALTER PROCEDURE bda.spImportarDetalleYGastosDesdeJSON
+
+------------------------------ SP para importar el detalle de los gastos por mes -----------------------------
+
+CREATE OR ALTER PROCEDURE bda.spImportarDetalleYGastos
 	@RutaArchivo NVARCHAR(256),
 	@Anio SMALLINT
 AS
@@ -658,43 +582,31 @@ BEGIN
 END;
 GO
 
-sp_configure 'show advanced options', 1;
-RECONFIGURE;
-GO
-sp_configure 'Ad Hoc Distributed Queries', 1;
-RECONFIGURE;
-GO
+------------------------------ SP para importar los datos de los consorcios -----------------------------
 
-EXEC master.dbo.sp_MSset_oledb_prop 
-N'Microsoft.ACE.OLEDB.16.0', 
-N'AllowInProcess', 1;
-    
-EXEC master.dbo.sp_MSset_oledb_prop 
-N'Microsoft.ACE.OLEDB.16.0', 
-N'DynamicParameters', 1;
-GO
-
-
-CREATE OR ALTER PROCEDURE bda.importarDatosVariosConsorcios
-    @rutaArchivo NVARCHAR(256),
-    @nombreHoja NVARCHAR(256)
+CREATE OR ALTER PROCEDURE bda.spImportarDatosConsorcios
+    @RutaArchivo NVARCHAR(256),
+    @NombreHoja NVARCHAR(256)
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    DECLARE @FilasInsertadas INT,
+			@FilasDuplicadas INT;
+
     --TABLA TEMPORAL
-    CREATE TABLE #TmpDatosVarios(
-    Consorcio VARCHAR(15),
-    Nombre_Consorcio VARCHAR(20),
-    Domicilio VARCHAR(20),
-    Unidades_Funcionales INT,
-    m2_Totales INT
+    CREATE TABLE #tmpDatosConsorcios(
+        Consorcio VARCHAR(15),
+        Nombre_Consorcio VARCHAR(20),
+        Domicilio VARCHAR(20),
+        Unidades_Funcionales INT,
+        m2_Totales INT
     );
 
     DECLARE @SQL NVARCHAR(MAX);
 
     SET @SQL ='
-    INSERT INTO #TmpDatosVarios
+    INSERT INTO #tmpDatosConsorcios
     SELECT
         [Consorcio],
         [Nombre del consorcio],
@@ -703,12 +615,28 @@ BEGIN
         [m2 totales]
     FROM OPENROWSET(
         ''Microsoft.ACE.OLEDB.16.0'',
-        ''Excel 12.0 Xml; HDR=YES;IMEX=1;Database=' + @rutaArchivo + ''',
-        ''SELECT * FROM [' + @nombreHoja + ']'');';
+        ''Excel 12.0 Xml; HDR=YES;IMEX=1;Database=' + @RutaArchivo + ''',
+        ''SELECT * FROM [' + @NombreHoja + ']'');';
+
     EXEC sp_executesql @SQL;
 
     INSERT INTO bda.Consorcio(nombre, direccion, cant_unidades_func, m2_totales)
-    SELECT Nombre_Consorcio, Domicilio, Unidades_Funcionales, m2_Totales FROM #TmpDatosVarios t2
+    SELECT Nombre_Consorcio, Domicilio, Unidades_Funcionales, m2_Totales FROM #TmpDatosConsorcios t2
     WHERE NOT EXISTS (SELECT nombre FROM bda.Consorcio t1 where t1.nombre COLLATE Latin1_General_CI_AI = t2.Nombre_Consorcio COLLATE Latin1_General_CI_AI)
+
+    SET @FilasInsertadas = @@ROWCOUNT
+	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpDatosConsorcios) - @FilasInsertadas
+
+	PRINT('Se ha importado el archivo de datos de los consorcios
+	Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
+	Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
 END;
 GO
+
+------------------------------ SP para importar los datos de los proveedores -----------------------------
+
+/*
+
+Parte de Joel
+
+*/

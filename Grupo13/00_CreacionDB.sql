@@ -1,7 +1,10 @@
 /* =========================================================
-	CreateDB.sql - Com2900G13
-	Proyecto: Altos de Saint Just (BDA)
-	Crea la base y el esquema de trabajo.
+	00_CreacionDB.sql - Com2900G13
+	Proyecto: Altos de Saint Just
+	Materia: Bases de datos aplicada
+    Grupo: 13
+
+	Este archivo crea la base de datos y el esquema de trabajo.
 
 	Alumnos:
 		45628269 - Liber Federico Manuel 
@@ -10,7 +13,6 @@
 		42587858 - Murillo Joel
 		46292592 - Larriba Pedro Ezequiel 
 		40464246 - Diaz Ortiz  Lucas Javier 
-
 ========================================================= */
 
 USE MASTER

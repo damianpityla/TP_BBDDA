@@ -1,6 +1,9 @@
 /* =========================================================
-	03_EjecucionSPImportacionArchivos - Com2900G13
-	Proyecto: Altos de Saint Just (BDA)
+	03_EjecucionSPImportacionArchivos.sql - Com2900G13
+	Proyecto: Altos de Saint Just
+	Materia: Bases de datos aplicada
+    Grupo: 13
+
 	Este archivo ejecuta los SP para la importacion de datos
 
 	Alumnos:
@@ -11,39 +14,12 @@
 		46292592 - Larriba Pedro Ezequiel 
 		40464246 - Diaz Ortiz  Lucas Javier 
 ========================================================= */
+
 USE Com2900G13
 GO
 
-EXEC bda.spImportarPagosConsorciosCsv
-	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
+------------------------------ Activacion de consultas AD-HOC y servidor OLEDB -----------------------------
 
-SELECT * FROM bda.pagos
-
-EXEC bda.spImportarPropietariosInquilinosCsv
-	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilino-propietarios-datos.csv';
-
-SELECT * FROM bda.Propietario
-SELECT * FROM bda.Inquilino
-
-EXEC bda.spImportarPropietariosInquilinosUFCsv
-	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilino-propietarios-UF.csv';
-
-SELECT * FROM bda.Propietario_en_UF
-SELECT * FROM bda.Inquilino_en_UF
-
---FALTA PROBAR YA QUE FALTAN UF Y CONSORCIOS
-EXEC bda.spImportarDetalleYGastosDesdeJSON
-	@RutaArchivo = 'C:\Users\damip\Downloads\consorcios\Servicios.json',
-	@Anio = 2025;
-SELECT * FROM bda.Gastos_Ordinarios
-SELECT * FROM bda.Detalle_Expensa
-
-exec bda.ImportarUnidadesFuncionales  
-@RutaArchivo= 'C:\Users\User\Documents\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF por consorcio.txt';
-select * from bda.Unidad_Funcional;
-GO
-
------------------------------- AD HOC PARA IMPORTAR EXCEL -----------------------------
 sp_configure 'show advanced options', 1;
 RECONFIGURE;
 GO
@@ -60,7 +36,80 @@ EXEC master.dbo.sp_MSset_oledb_prop
     N'DynamicParameters', 1;
 GO
 
-EXEC bda.importarDatosVariosConsorcios
-@rutaArchivo = 'C:\Users\User\Documents\Facultad\Bases de Datos Aplicadas\TP\TP_BBDDA\Grupo13\ArchivosImportacion\datos varios',
-@nombreHoja = 'Consorcios$';
+------------------------------ CONSORCIOS "datos_varios.xlsx" HOJA: Consorcios$ -----------------------------
+
+EXEC bda.spImportarDatosConsorcios
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\datos_varios.xlsx',
+	@NombreHoja = 'Consorcios$';
+
 SELECT * FROM bda.Consorcio
+
+--DBCC CHECKIDENT ('bda.Consorcio', RESEED, 0);
+--DELETE FROM bda.Consorcio
+
+------------------------------ UNIDADES FUNCIONALES POR CONSORCIO "UF_por_consorcio.txt" -----------------------------
+
+--NO ANDA
+EXEC bda.spImportarUnidadesFuncionales  
+	@RutaArchivo= 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF_por_consorcio.txt';
+
+SELECT * FROM bda.Unidad_Funcional;
+
+--DBCC CHECKIDENT ('bda.Unidad_Funcional', RESEED, 0);
+--DELETE FROM bda.Unidad_Funcional
+
+------------------------------ PAGOS POR UNIDAD FUNCIONAL "pagos_consorcios.csv" -----------------------------
+
+EXEC bda.spImportarPagosConsorcios
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
+
+SELECT * FROM bda.pagos
+
+--DBCC CHECKIDENT ('bda.Pagos', RESEED, 0);
+--DELETE FROM bda.Pagos
+
+------------------------------ INQUILINOS Y PROPIETARIOS "inquilinos_propietarios_datos.csv" -----------------------------
+
+EXEC bda.spImportarPropietariosInquilinos
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilinos_propietarios_datos.csv';
+
+SELECT * FROM bda.Propietario
+SELECT * FROM bda.Inquilino
+
+--DBCC CHECKIDENT ('bda.Propietario', RESEED, 0);
+--DELETE FROM bda.Propietario
+
+--DBCC CHECKIDENT ('bda.Inquilino', RESEED, 0);
+--DELETE FROM bda.Inquilino
+
+------------------------------ INQUILINOS Y PROPIETARIOS EN CADA UNIDAD FUNCIONAL "inquilinos_propietarios_UF.csv" -----------------------------
+
+EXEC bda.spImportarPropietariosInquilinosUF
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilinos_propietarios_UF.csv';
+
+SELECT * FROM bda.Propietario_en_UF
+SELECT * FROM bda.Inquilino_en_UF
+
+--DBCC CHECKIDENT ('bda.Propietario_en_UF', RESEED, 0);
+--DELETE FROM bda.Propietario_en_UF
+
+--DBCC CHECKIDENT ('bda.Inquilino_en_UF', RESEED, 0);
+--DELETE FROM bda.Inquilino_en_UF
+
+------------------------------ GASTOS DE CADA CONSORCIO "servicios.json" -----------------------------
+
+--NO ANDA
+EXEC bda.spImportarDetalleYGastos
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\servicios.json',
+	@Anio = 2025;
+
+SELECT * FROM bda.Gastos_Ordinarios
+SELECT * FROM bda.Detalle_Expensa
+
+------------------------------ PROVEEDORES "datos_varios.xlsx" HOJA: Proveedores$ -----------------------------
+
+/*
+
+Parte de Joel
+
+*/
