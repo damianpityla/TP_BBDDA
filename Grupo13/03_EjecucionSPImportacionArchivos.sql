@@ -54,10 +54,10 @@ EXEC bda.spImportarDatosProveedores
 	@NombreHoja = 'Proveedores$',
 	@RangoCeldas = 'B3:E30';
 
+SELECT * FROM bda.Proveedor
+
 --DBCC CHECKIDENT ('bda.Proveedor', RESEED, 0);
 --DELETE FROM bda.Proveedor
-
-SELECT * FROM bda.Proveedor
 
 ------------------------------ UNIDADES FUNCIONALES POR CONSORCIO "UF_por_consorcio.txt" -----------------------------
 
@@ -68,16 +68,6 @@ SELECT * FROM bda.Unidad_Funcional;
 
 --DBCC CHECKIDENT ('bda.Unidad_Funcional', RESEED, 0);
 --DELETE FROM bda.Unidad_Funcional
-
------------------------------- PAGOS POR UNIDAD FUNCIONAL "pagos_consorcios.csv" -----------------------------
-
-EXEC bda.spImportarPagosConsorcios
-	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
-
-SELECT * FROM bda.pagos
-
---DBCC CHECKIDENT ('bda.Pagos', RESEED, 0);
---DELETE FROM bda.Pagos
 
 ------------------------------ INQUILINOS Y PROPIETARIOS "inquilinos_propietarios_datos.csv" -----------------------------
 
@@ -107,10 +97,23 @@ SELECT * FROM bda.Inquilino_en_UF
 --DBCC CHECKIDENT ('bda.Inquilino_en_UF', RESEED, 0);
 --DELETE FROM bda.Inquilino_en_UF
 
+------------------------------ PAGOS POR UNIDAD FUNCIONAL "pagos_consorcios.csv" -----------------------------
+
+EXEC bda.spImportarPagosConsorcios
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
+
+SELECT * FROM bda.pagos
+
+--DBCC CHECKIDENT ('bda.Pagos', RESEED, 0);
+--DELETE FROM bda.Pagos
+
 ------------------------------ GASTOS DE CADA CONSORCIO "servicios.json" -----------------------------
 
 EXEC bda.spImportarDetalleYGastos
-	@RutaArchivo = 'C:\Users\damip\Downloads\consorcios\Servicios.json',
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\servicios.json',
 	@Anio = 2025;
 
 SELECT * FROM bda.Gastos_Ordinarios
+
+--DBCC CHECKIDENT ('bda.Gastos_Ordinarios', RESEED, 0);
+--DELETE FROM bdaGastos_Ordinarios

@@ -150,7 +150,7 @@ BEGIN
 	EL IMPORTE TIENE EL SIGNO $, EL MOTOR NO LO RECONOCE COMO DECIMAL(10,2)
 	ENTONCES LOS TIPOS DE DATO SON VARCHAR*/
 
-	DECLARE @SQL NVARCHAR(MAX) = ''
+	DECLARE @SQL NVARCHAR(MAX) = '';
 
 	SET @SQL = '
 	BULK INSERT #tmpPagos
@@ -160,16 +160,30 @@ BEGIN
 		ROWTERMINATOR = ''\n'',
 		CODEPAGE = ''ACP'',
 		FIRSTROW = 2
-	)'
+	)';
 
 	EXEC sp_executesql @SQL;
 	--USAMOS SQL DINAMICO PARA INSERTAR LA VARIABLE DE LA RUTA DEL ARCHIVO EN EL BULK INSERT
 
-	DELETE FROM #tmpPagos WHERE id_pago IN (SELECT MAX(id_pago) FROM #tmpPagos)
+	DELETE FROM #tmpPagos WHERE id_pago IN (SELECT MAX(id_pago) FROM #tmpPagos);
 	--HAY UN REGISTRO EN EL .CSV QUE MARCA EL FIN DE ARCHIVO
 
-	INSERT INTO bda.Pagos (id_pago,fecha_pago,cta_origen,importe)
-	SELECT id_pago,CONVERT(date, fecha_pago, 103),cta_origen,REPLACE(importe, '$', '') FROM #tmpPagos t1
+	WITH PropietariosInquilinosUF(ID,CVU_CBU,ID_UF) AS(
+		SELECT * FROM bda.Propietario_en_UF
+		UNION
+		SELECT * FROM bda.Inquilino_en_UF
+	)
+	INSERT INTO bda.Pagos (id_pago,fecha_pago,cta_origen,importe,asociado,id_unidad)
+	SELECT 
+		id_pago,
+		CONVERT(date, fecha_pago, 103),
+		cta_origen,
+		REPLACE(REPLACE(importe, '$', ''), '.', ''),
+		CASE
+			WHEN cta_origen IS NULL THEN 0 ELSE 1
+		END AS asociado,
+		ID_UF FROM #tmpPagos t1
+	INNER JOIN PropietariosInquilinosUF piuf ON t1.cta_origen COLLATE Latin1_General_CI_AI = piuf.CVU_CBU COLLATE Latin1_General_CI_AI
 	WHERE NOT EXISTS(SELECT id_pago FROM bda.pagos t2 WHERE t1.id_pago = t2.id_pago)
 	--ENTONCES MODIFICO LOS VARCHAR A MI GUSTO Y LOS INSERTO EN LA TABLA QUE NOS IMPORTA, QUE ES LA DE PAGOS
 	--ADEMAS EVITO LA INSERCION DE DUPLICADOS
@@ -283,16 +297,20 @@ BEGIN
 
 	DELETE FROM #tmpPropietarioInquilinoUF WHERE CVU_CBU IS NULL
 
-	INSERT INTO bda.Propietario_en_UF(CVU_CBU_Propietario,Nombre_Consorcio,NroUF,Piso,Departamento)
-	SELECT CVU_CBU,Nombre_Consorcio,NroUF,Piso,Departamento FROM #tmpPropietarioInquilinoUF t1
+	INSERT INTO bda.Propietario_en_UF(CVU_CBU_Propietario,ID_UF)
+	SELECT CVU_CBU,id_unidad FROM #tmpPropietarioInquilinoUF t1
+	INNER JOIN bda.Consorcio c ON t1.Nombre_Consorcio COLLATE Latin1_General_CI_AI = c.nombre COLLATE Latin1_General_CI_AI
+	INNER JOIN bda.Unidad_Funcional uf ON c.id_consorcio = uf.id_consorcio AND t1.NroUF = uf.numero_unidad
 	WHERE NOT EXISTS(SELECT CVU_CBU_Propietario FROM bda.Propietario_en_UF t2 WHERE t1.CVU_CBU COLLATE Latin1_General_CI_AI = t2.CVU_CBU_Propietario COLLATE Latin1_General_CI_AI)
     AND EXISTS(SELECT CVU_CBU FROM bda.Propietario WHERE CVU_CBU COLLATE Latin1_General_CI_AI = t1.CVU_CBU COLLATE Latin1_General_CI_AI)
 
 	SET @FilasInsertadasPropietarioUF = @@ROWCOUNT
 	SET @FilasDuplicadasPropietarioUF = (SELECT COUNT(*) FROM bda.Propietario_en_UF) - @FilasInsertadasPropietarioUF
 
-	INSERT INTO bda.Inquilino_en_UF(CVU_CBU_Inquilino,Nombre_Consorcio,NroUF,Piso,Departamento)
-	SELECT CVU_CBU,Nombre_Consorcio,NroUF,Piso,Departamento FROM #tmpPropietarioInquilinoUF t1
+	INSERT INTO bda.Inquilino_en_UF(CVU_CBU_Inquilino,ID_UF)
+	SELECT CVU_CBU,id_unidad FROM #tmpPropietarioInquilinoUF t1
+	INNER JOIN bda.Consorcio c ON t1.Nombre_Consorcio COLLATE Latin1_General_CI_AI = c.nombre COLLATE Latin1_General_CI_AI
+	INNER JOIN bda.Unidad_Funcional uf ON c.id_consorcio = uf.id_consorcio AND t1.NroUF = uf.numero_unidad
 	WHERE NOT EXISTS(SELECT CVU_CBU_Inquilino FROM bda.Inquilino_en_UF t2 WHERE t1.CVU_CBU COLLATE Latin1_General_CI_AI = t2.CVU_CBU_Inquilino COLLATE Latin1_General_CI_AI)
 	AND EXISTS(SELECT CVU_CBU FROM bda.Inquilino WHERE CVU_CBU COLLATE Latin1_General_CI_AI = t1.CVU_CBU COLLATE Latin1_General_CI_AI)
 
@@ -540,6 +558,26 @@ BEGIN
         SELECT t.servicio,t.descripcion,t.cuenta,c.id_consorcio FROM #tmpProveedores t
         INNER JOIN bda.Consorcio c ON c.nombre COLLATE Latin1_General_CI_AI = t.nombre_consorcio COLLATE Latin1_General_CI_AI
 
+	/*
+	SELECT 
+		CASE 
+			WHEN servicio LIKE 'Serv. Limpieza' 
+			THEN cuenta
+			ELSE descripcion
+		END AS Nombre,
+		CASE
+			WHEN Nombre_Proveedor LIKE 'Serv. Limpieza'
+			THEN Null
+			ELSE  LTRIM(REPLACE(NroCuenta, 'cuenta', '')) 
+		END AS Nro_Cuenta
+		FROM #TmpProveedores t
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM bda.Proveedor p
+			WHERE p.nombre COLLATE Latin1_General_CI_AI = t.Nombre_Proveedor COLLATE Latin1_General_CI_AI
+		);
+	*/
+
     SET @FilasInsertadas = @@ROWCOUNT
 	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpProveedores) - @FilasInsertadas
 
@@ -549,22 +587,65 @@ BEGIN
 END;
 GO
 
-/*
-SELECT 
-    CASE 
-        WHEN servicio LIKE 'Serv. Limpieza' 
-        THEN cuenta
-        ELSE descripcion
-    END AS Nombre,
-    CASE
-        WHEN Nombre_Proveedor LIKE 'Serv. Limpieza'
-        THEN Null
-        ELSE  LTRIM(REPLACE(NroCuenta, 'cuenta', '')) 
-    END AS Nro_Cuenta
-    FROM #TmpProveedores t
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM bda.Proveedor p
-        WHERE p.nombre COLLATE Latin1_General_CI_AI = t.Nombre_Proveedor COLLATE Latin1_General_CI_AI
-    );
-*/
+------------------------------ SP para generar las expensas -----------------------------
+
+CREATE OR ALTER PROCEDURE bda.spGenerarExpensas
+	@Mes TINYINT,
+	@FechaEmision DATE,
+	@FechaVencimiento1 DATE,
+	@FechaVencimiento2 DATE
+AS
+BEGIN
+	INSERT INTO bda.Expensa
+	SELECT DISTINCT(c.id_consorcio),@Mes,@FechaEmision,@FechaVencimiento1,@FechaVencimiento2 FROM bda.Consorcio c
+	INNER JOIN bda.Gastos_Ordinarios gao ON c.id_consorcio = gao.id_consorcio;
+
+	WITH Gastos_Ordinarios(id,importe) AS(
+		SELECT id_consorcio, sum(importe)
+		FROM bda.Gastos_Ordinarios 
+		WHERE mes = 4
+		GROUP BY id_consorcio
+	)
+	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,valor_ordinarias,valor_extraordinarias,id_cochera,id_baulera)
+	SELECT e.id_expensa,uf.id_unidad,(gao.importe*(uf.porcentaje/100)),gae.id_gasto_extraordinario,c.id_cochera,b.id_baulera
+	FROM bda.Expensa e
+	INNER JOIN bda.Unidad_Funcional uf ON e.id_consorcio = uf.id_consorcio
+	INNER JOIN Gastos_Ordinarios gao ON uf.id_consorcio = gao.id
+	FULL JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
+	FULL JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
+	FULL JOIN bda.Gastos_Extraordinarios gae ON uf.id_unidad = b.id_uf
+END
+GO
+
+------------------------------ VIEW que muestra la expensa generada por consorcio -----------------------------
+
+CREATE OR ALTER VIEW bda.vExpensaGenerada AS
+	WITH Propietarios_Inquilinos_UF AS(
+		SELECT * FROM bda.Propietario_en_UF
+		UNION
+		SELECT * FROM bda.Inquilino_en_UF
+	),
+	Propietarios_Inquilinos AS(
+		SELECT * FROM bda.Propietario
+		UNION
+		SELECT * FROM bda.Inquilino
+	)
+	SELECT 
+		uf.id_unidad AS Uf,
+		CAST(uf.porcentaje AS DECIMAL(3,2)) AS '%', 
+		uf.piso + '-' + uf.depto AS 'Piso-Depto.',
+		p_i.Nombre + ' ' + p_i.Apellido AS 'Propietario/Inquilino',
+		de.valor_ordinarias AS Gastos_Ordinarios,
+		CASE 
+			WHEN de.id_cochera IS NOT NULL THEN 50000 ELSE 0
+		END AS Cochera,
+		CASE 
+			WHEN de.id_baulera IS NOT NULL THEN 20000 ELSE 0
+		END AS Baulera,
+		ISNULL(gae.importe,0) AS Gastos_Extraordinarios,
+		de.valor_ordinarias + (CASE WHEN de.id_cochera IS NOT NULL THEN 50000 ELSE 0 END) + (CASE WHEN de.id_baulera IS NOT NULL THEN 20000 ELSE 0 END) + ISNULL(gae.importe,0) AS Total_A_Pagar
+	FROM Propietarios_Inquilinos_UF piuf
+	INNER JOIN Propietarios_Inquilinos p_i ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
+	INNER JOIN bda.Unidad_Funcional uf ON piuf.ID_UF = uf.id_unidad
+	INNER JOIN bda.Detalle_Expensa de ON uf.id_unidad = de.id_uf
+	FULL JOIN bda.Gastos_Extraordinarios gae ON de.valor_extraordinarias = gae.id_gasto_extraordinario
