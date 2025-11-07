@@ -18,18 +18,25 @@
 USE Com2900G13
 GO
 
------------------------------- GENERACION DE ALGUNOS DATOS RANDOM -----------------------------
+------------------------------ BAULERAS Y COCHERAS -----------------------------
 
-INSERT INTO bda.Cochera VALUES (4,1)
+EXEC bda.spCargarBaulerasCocheras 
+
+SELECT * FROM bda.Baulera
 SELECT * FROM bda.Cochera
 
-INSERT INTO bda.Baulera VALUES (4,1)
-SELECT * FROM bda.Baulera
+--DBCC CHECKIDENT ('bda.Baulera', RESEED, 0);
+--DELETE FROM bda.Baulera
 
-INSERT INTO bda.Gastos_Extraordinarios(id_uf,descripcion,importe) VALUES(4,'AIRE ACONDICIONADO', 63000)
+--DBCC CHECKIDENT ('bda.Cochera', RESEED, 0);
+--DELETE FROM bda.Cochera
+
+------------------------------ GENERACION DE GASTOS EXTRAORDINARIOS -----------------------------
+
+INSERT INTO bda.Gastos_Extraordinarios(id_consorcio,descripcion,importe) VALUES(1,'INSTALACION CAMARAS DE SEGURIDAD',380000)
 SELECT * FROM bda.Gastos_Extraordinarios
 
-delete from bda.Gastos_Extraordinarios
+--DELETE FROM bda.Gastos_Extraordinarios
 
 ------------------------------ GENERACION DE EXPENSAS DEL MES DE ABRIL -----------------------------
 

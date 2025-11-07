@@ -109,6 +109,8 @@ SELECT * FROM bda.pagos
 
 ------------------------------ GASTOS DE CADA CONSORCIO "servicios.json" -----------------------------
 
+--REPARAR INSERTADO DE DUPLICADOS
+
 EXEC bda.spImportarDetalleYGastos
 	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\servicios.json',
 	@Anio = 2025;
@@ -116,4 +118,4 @@ EXEC bda.spImportarDetalleYGastos
 SELECT * FROM bda.Gastos_Ordinarios
 
 --DBCC CHECKIDENT ('bda.Gastos_Ordinarios', RESEED, 0);
---DELETE FROM bdaGastos_Ordinarios
+--DELETE FROM bda.Gastos_Ordinarios

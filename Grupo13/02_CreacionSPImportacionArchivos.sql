@@ -51,13 +51,13 @@ BEGIN
 
     -- TABLA TEMPORAL PARA CARGAR EL ARCHIVO
     CREATE TABLE #tmpUFxCONS( 
-        Nombre_consorcio NVARCHAR(100),
+        nombre_consorcio NVARCHAR(100),
         nroUnidadFuncional NVARCHAR(20),
-        Piso NVARCHAR(20),
+        piso NVARCHAR(20),
         departamento NVARCHAR(20),
         coeficiente NVARCHAR(20),
         m2_unidad_funcional NVARCHAR(20),
-        bauleras NVARCHAR(10),
+        baulera NVARCHAR(10),
         cochera NVARCHAR(10),
         m2_baulera NVARCHAR(20),
         m2_cochera NVARCHAR(20)
@@ -86,24 +86,24 @@ BEGIN
 	    numero_unidad,
 	    piso,
 	    depto,
+	    m2_unidad_funcional,
 	    porcentaje,
-	    superficie,
-	    tiene_baulera,
-	    tiene_cochera
+	    baulera,
+		m2_baulera,
+		cochera,
+		m2_cochera
 	)
 	SELECT 
 	    c.id_consorcio,
 	    TRY_CAST(REPLACE(REPLACE(t1.nroUnidadFuncional, ' ', ''), CHAR(160), '') AS INT),
-	    t1.Piso,
+	    t1.piso,
 	    t1.departamento,
-	    CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(6,4)),
-	    CASE 
-	        WHEN t1.m2_unidad_funcional LIKE '%[0-9]%' 
-	        THEN CAST(REPLACE(REPLACE(t1.m2_unidad_funcional, ' ', ''), CHAR(160), '') AS DECIMAL(10,2))
-	        ELSE 0 
-	    END,
-	    CASE WHEN UPPER(t1.bauleras) = 'SI' THEN 1 ELSE 0 END,
-	    CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END
+		t1.m2_unidad_funcional,
+	    CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(4,1)),
+	    CASE WHEN UPPER(t1.baulera) = 'SI' THEN 1 ELSE 0 END,
+		t1.m2_baulera,
+	    CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END,
+		t1.m2_cochera
 	FROM #tmpUFxCONS t1
 	JOIN bda.Consorcio c 
 	  ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
@@ -125,6 +125,48 @@ BEGIN
     PRINT('Se ha importado el archivo de unidades funcionales por consorcio
     Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
     Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
+END;
+GO
+
+------------------------------ SP para cargas las bauleras y cocheras correspondientes a cada unidad funcional -----------------------------
+
+CREATE OR ALTER PROCEDURE bda.spCargarBaulerasCocheras
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+	DECLARE @FilasInsertadasBaulera INT,
+			@FilasDuplicadasBaulera INT,
+			@FilasInsertadasCochera INT,
+			@FilasDuplicadasCochera INT
+
+	INSERT INTO bda.Baulera(
+		id_uf,
+		importe
+	)
+	SELECT id_unidad,(m2_baulera*10000) AS importe FROM bda.Unidad_Funcional uf
+	WHERE (m2_baulera*10000) > 0
+	AND NOT EXISTS(SELECT id_uf FROM bda.Baulera b WHERE uf.id_unidad = b.id_uf)
+
+    SET @FilasInsertadasBaulera = @@ROWCOUNT;
+    SET @FilasDuplicadasBaulera = (SELECT COUNT(*) FROM bda.Baulera) - @FilasInsertadasBaulera
+
+	INSERT INTO bda.Cochera(
+		id_uf,
+		importe
+	)
+	SELECT id_unidad,(m2_cochera*10000) AS importe FROM bda.Unidad_Funcional uf
+	WHERE (m2_cochera*10000) > 0 
+	AND NOT EXISTS(SELECT id_uf FROM bda.Cochera c WHERE uf.id_unidad = c.id_uf)
+
+	SET @FilasInsertadasCochera = @@ROWCOUNT;
+    SET @FilasDuplicadasCochera = (SELECT COUNT(*) FROM bda.Cochera) - @FilasInsertadasCochera
+
+    PRINT('Se han cargado las bauleras y cocheras correspondientes a cada unidad funcional
+	Filas insertadas en la tabla de bauleras = ' + CAST(@FilasInsertadasBaulera AS VARCHAR) + '
+	Filas duplicadas en la tabla de bauleras = ' + CAST(@FilasDuplicadasBaulera AS VARCHAR) + '
+	Filas insertadas en la tabla de cocheras = ' + CAST(@FilasInsertadasCochera AS VARCHAR) + '
+	Filas duplicadas en la tabla de cocheras = ' + CAST(@FilasDuplicadasCochera AS VARCHAR));
 END;
 GO
 
@@ -375,10 +417,11 @@ CREATE OR ALTER PROCEDURE bda.spImportarDetalleYGastos
 AS
 BEGIN
 	SET NOCOUNT ON;
-	DECLARE @JSON NVARCHAR(MAX);
 
-	DECLARE @SQL NVARCHAR(MAX);
-
+	DECLARE @JSON NVARCHAR(MAX),
+			@SQL NVARCHAR(MAX),
+			@FilasInsertadas INT,
+			@FilasDuplicadas INT;
 	
 	IF OBJECT_ID('tempdb..#tmpJson') IS NOT NULL DROP TABLE #tmpJson;
 	CREATE TABLE #tmpJson (BulkColumn NVARCHAR(MAX)); --creo tabla para meter el json como texto plano
@@ -469,6 +512,13 @@ BEGIN
 		(N'SERVICIOS PUBLICOS-Internet', bda.fn_NormalizarImporte(t.sInternet))
 	) AS v(tipo_gasto, importe)
 	WHERE v.importe IS NOT NULL AND v.importe > 0;
+
+	SET @FilasInsertadas = @@ROWCOUNT
+	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpCarga) - @FilasInsertadas
+
+	PRINT('Se ha importado el archivo de gastos ordinarios de cada consorcio
+	Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
+	Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
 END;
 GO
 
@@ -606,14 +656,14 @@ BEGIN
 		WHERE mes = 4
 		GROUP BY id_consorcio
 	)
-	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,valor_ordinarias,valor_extraordinarias,id_cochera,id_baulera)
-	SELECT e.id_expensa,uf.id_unidad,(gao.importe*(uf.porcentaje/100)),gae.id_gasto_extraordinario,c.id_cochera,b.id_baulera
+	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera)
+	SELECT e.id_expensa,uf.id_unidad,(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0)
 	FROM bda.Expensa e
 	INNER JOIN bda.Unidad_Funcional uf ON e.id_consorcio = uf.id_consorcio
 	INNER JOIN Gastos_Ordinarios gao ON uf.id_consorcio = gao.id
-	FULL JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
 	FULL JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
-	FULL JOIN bda.Gastos_Extraordinarios gae ON uf.id_unidad = b.id_uf
+	FULL JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
+	FULL JOIN bda.Gastos_Extraordinarios gae ON gae.id_consorcio = uf.id_consorcio
 END
 GO
 
@@ -636,16 +686,11 @@ CREATE OR ALTER VIEW bda.vExpensaGenerada AS
 		uf.piso + '-' + uf.depto AS 'Piso-Depto.',
 		p_i.Nombre + ' ' + p_i.Apellido AS 'Propietario/Inquilino',
 		de.valor_ordinarias AS Gastos_Ordinarios,
-		CASE 
-			WHEN de.id_cochera IS NOT NULL THEN 50000 ELSE 0
-		END AS Cochera,
-		CASE 
-			WHEN de.id_baulera IS NOT NULL THEN 20000 ELSE 0
-		END AS Baulera,
-		ISNULL(gae.importe,0) AS Gastos_Extraordinarios,
-		de.valor_ordinarias + (CASE WHEN de.id_cochera IS NOT NULL THEN 50000 ELSE 0 END) + (CASE WHEN de.id_baulera IS NOT NULL THEN 20000 ELSE 0 END) + ISNULL(gae.importe,0) AS Total_A_Pagar
+		de.valor_baulera AS Baulera,
+		de.valor_cochera AS Cochera,
+		de.valor_extraordinarias AS Gastos_Extraordinarios,
+		de.valor_ordinarias + de.valor_baulera + de.valor_cochera + de.valor_extraordinarias AS Total_A_Pagar
 	FROM Propietarios_Inquilinos_UF piuf
 	INNER JOIN Propietarios_Inquilinos p_i ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
 	INNER JOIN bda.Unidad_Funcional uf ON piuf.ID_UF = uf.id_unidad
 	INNER JOIN bda.Detalle_Expensa de ON uf.id_unidad = de.id_uf
-	FULL JOIN bda.Gastos_Extraordinarios gae ON de.valor_extraordinarias = gae.id_gasto_extraordinario

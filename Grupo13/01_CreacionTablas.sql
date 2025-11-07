@@ -31,40 +31,40 @@ CREATE TABLE bda.Consorcio (
 -- Unidad_Funcional
 IF OBJECT_ID('bda.Unidad_Funcional') IS NOT NULL DROP TABLE bda.Unidad_Funcional;
 CREATE TABLE bda.Unidad_Funcional (
-  id_unidad INT IDENTITY(1,1) PRIMARY KEY,
-  id_consorcio INT NOT NULL,
-  numero_unidad int NOT NULL,
-  superficie DECIMAL(10,2) NOT NULL CHECK (superficie >= 0),
-  piso NVARCHAR(20) NOT NULL,
-  depto NVARCHAR(20) NOT NULL,
-  porcentaje DECIMAL(6,4) NOT NULL CHECK (porcentaje >= 0 AND porcentaje <= 100),
-  tiene_cochera BIT NOT NULL CONSTRAINT DF_UF_tiene_cochera DEFAULT(0),
-  tiene_baulera BIT NOT NULL CONSTRAINT DF_UF_tiene_baulera DEFAULT(0),
-  CONSTRAINT FK_UF_Consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio)
+	id_unidad INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	id_consorcio INT NOT NULL,
+	numero_unidad TINYINT NOT NULL,
+	piso VARCHAR(2) NOT NULL,
+	depto CHAR(1) NOT NULL,
+	m2_unidad_funcional TINYINT NOT NULL,
+	porcentaje DECIMAL(4,1) NOT NULL,
+	baulera BIT NOT NULL,
+	m2_baulera TINYINT NOT NULL,
+	cochera BIT NOT NULL,
+	m2_cochera TINYINT NOT NULL,
+	CONSTRAINT FK_UF_Consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );
 CREATE INDEX IX_UF_Consorcio ON bda.Unidad_Funcional(id_consorcio);
-
--- Cochera
-IF OBJECT_ID('bda.Cochera') IS NOT NULL DROP TABLE bda.Cochera;
-CREATE TABLE bda.Cochera (
-  id_cochera INT IDENTITY(1,1) PRIMARY KEY,
-  id_uf INT NOT NULL,
-  nro_cochera NVARCHAR(50) NOT NULL,
-  CONSTRAINT FK_Cochera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT UQ_Cochera UNIQUE(id_uf, nro_cochera)
-);
-CREATE NONCLUSTERED INDEX IX_Cochera_UF ON bda.Cochera(id_uf);
 
 -- Baulera
 IF OBJECT_ID('bda.Baulera') IS NOT NULL DROP TABLE bda.Baulera;
 CREATE TABLE bda.Baulera (
-  id_baulera INT IDENTITY(1,1) PRIMARY KEY,
-  id_uf INT NOT NULL,
-  nro_baulera NVARCHAR(50) NOT NULL,
-  CONSTRAINT FK_Baulera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT UQ_Baulera UNIQUE(id_uf, nro_baulera)
+	id_baulera INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	id_uf INT NOT NULL,
+	importe INT NOT NULL
+	CONSTRAINT FK_Baulera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
 );
 CREATE NONCLUSTERED INDEX IX_Baulera_UF ON bda.Baulera(id_uf);
+
+-- Cochera
+IF OBJECT_ID('bda.Cochera') IS NOT NULL DROP TABLE bda.Cochera;
+CREATE TABLE bda.Cochera (
+	id_cochera INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	id_uf INT NOT NULL,
+	importe INT NOT NULL
+	CONSTRAINT FK_Cochera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad)
+);
+CREATE NONCLUSTERED INDEX IX_Cochera_UF ON bda.Cochera(id_uf);
 
 --Propietario
 IF OBJECT_ID('bda.Propietario') IS NOT NULL DROP TABLE bda.Propietario;
@@ -142,18 +142,15 @@ CREATE TABLE bda.Detalle_Expensa (
 	id_detalle INT IDENTITY(1,1) PRIMARY KEY,
 	id_expensa INT NOT NULL,
 	id_uf INT NOT NULL,
-	saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
-	valor_ordinarias DECIMAL(18,2) NOT NULL DEFAULT 0,
-	valor_extraordinarias INT,
-	id_cochera INT,
-	id_baulera INT,
+	valor_ordinarias DECIMAL(18,2) NOT NULL,
+	valor_extraordinarias DECIMAL(18,2) NOT NULL,
+	valor_baulera INT NOT NULL,
+	valor_cochera INT NOT NULL,
 	CONSTRAINT FK_Det_Exp FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa),
 	CONSTRAINT FK_Det_UF  FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
-	CONSTRAINT FK_Det_C FOREIGN KEY (id_cochera) REFERENCES bda.Cochera(id_cochera),
-	CONSTRAINT FK_Det_B FOREIGN KEY (id_baulera) REFERENCES bda.Baulera(id_baulera),
 );
 
---estado financiero
+-- Estado Financiero
 IF OBJECT_ID('bda.Estado_Financiero') IS NOT NULL DROP TABLE bda.Estado_Financiero;
 CREATE TABLE bda.Estado_Financiero (
   id_estado INT IDENTITY(1,1) PRIMARY KEY,
@@ -176,7 +173,7 @@ CREATE TABLE bda.Gastos_Ordinarios (
   mes TINYINT NOT NULL CHECK (mes BETWEEN 1 AND 12),
   tipo_gasto NVARCHAR(100) NOT NULL,   -- banco/limpieza/admin/seguros/etc.
   nro_factura NVARCHAR(50) NULL,
-  importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),
+  importe DECIMAL(18,2) NOT NULL,
   CONSTRAINT FK_GO_consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio),
   CONSTRAINT FK_GO_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
 );
@@ -184,29 +181,29 @@ CREATE TABLE bda.Gastos_Ordinarios (
 -- Gastos Extraordinarios
 IF OBJECT_ID('bda.Gastos_Extraordinarios') IS NOT NULL DROP TABLE bda.Gastos_Extraordinarios;
 CREATE TABLE bda.Gastos_Extraordinarios (
-  id_gasto_extraordinario INT IDENTITY(1,1) PRIMARY KEY,
-  id_uf INT NOT NULL,
-  id_proveedor INT NULL,
-  descripcion NVARCHAR(400) NULL,
-  paga_en_cuotas BIT NOT NULL DEFAULT(0),
-  nro_de_cuotas SMALLINT NULL CHECK (nro_de_cuotas IS NULL OR (nro_de_cuotas BETWEEN 1 AND 120)),
-  importe DECIMAL(18,2) NULL CHECK (importe >= 0),
-  CONSTRAINT FK_GE_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT FK_GE_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
+	id_gasto_extraordinario INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	id_consorcio INT NOT NULL,
+	--id_proveedor INT NOT NULL,
+	descripcion VARCHAR(100) NOT NULL,
+	importe DECIMAL(18,2) NOT NULL,
+	--paga_en_cuotas BIT NOT NULL DEFAULT(0),
+	--nro_de_cuotas SMALLINT NULL CHECK (nro_de_cuotas IS NULL OR (nro_de_cuotas BETWEEN 1 AND 120)),
+	CONSTRAINT FK_GE_UF FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio),
+	--CONSTRAINT FK_GE_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
 );
 
--- pagos
+-- Pagos
 IF OBJECT_ID('bda.Pagos') IS NOT NULL DROP TABLE bda.Pagos;
 CREATE TABLE bda.Pagos (
-id_pago INT PRIMARY KEY NOT NULL,
-  fecha_pago DATE NOT NULL,
-  cta_origen VARCHAR(22) NOT NULL, -- CVU/CBU
-  importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),
-  asociado BIT NULL DEFAULT(0),
-  id_unidad INT NULL,
-  id_expensa INT NULL,
-  CONSTRAINT FK_Pagos_UF FOREIGN KEY (id_unidad) REFERENCES bda.Unidad_Funcional(id_unidad),
-  CONSTRAINT FK_Pagos_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)
+	id_pago INT PRIMARY KEY NOT NULL,
+	fecha_pago DATE NOT NULL,
+	cta_origen VARCHAR(22) NOT NULL, -- CVU/CBU
+	importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),
+	asociado BIT NULL DEFAULT(0),
+	id_unidad INT NULL,
+	id_expensa INT NULL,
+	CONSTRAINT FK_Pagos_UF FOREIGN KEY (id_unidad) REFERENCES bda.Unidad_Funcional(id_unidad),
+	CONSTRAINT FK_Pagos_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)
 );
 CREATE INDEX IX_Pagos_Asociacion  ON bda.Pagos(asociado, id_unidad, id_expensa);
 CREATE INDEX IX_Pagos_CuentaFecha ON bda.Pagos(cta_origen, fecha_pago);
