@@ -51,7 +51,7 @@ IF OBJECT_ID('bda.Baulera') IS NOT NULL DROP TABLE bda.Baulera;
 CREATE TABLE bda.Baulera (
 	id_baulera INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
 	id_uf INT NOT NULL,
-	importe INT NOT NULL
+	importe DECIMAL(18,2) NOT NULL
 	CONSTRAINT FK_Baulera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
 );
 CREATE NONCLUSTERED INDEX IX_Baulera_UF ON bda.Baulera(id_uf);
@@ -61,7 +61,7 @@ IF OBJECT_ID('bda.Cochera') IS NOT NULL DROP TABLE bda.Cochera;
 CREATE TABLE bda.Cochera (
 	id_cochera INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
 	id_uf INT NOT NULL,
-	importe INT NOT NULL
+	importe DECIMAL(18,2) NOT NULL
 	CONSTRAINT FK_Cochera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad)
 );
 CREATE NONCLUSTERED INDEX IX_Cochera_UF ON bda.Cochera(id_uf);
@@ -142,10 +142,13 @@ CREATE TABLE bda.Detalle_Expensa (
 	id_detalle INT IDENTITY(1,1) PRIMARY KEY,
 	id_expensa INT NOT NULL,
 	id_uf INT NOT NULL,
+	id_pago INT NOT NULL,
+	--pago_recibido DECIMAL(18,2) NOT NULL,
+	interes_por_mora DECIMAL(18,2) NOT NULL,
 	valor_ordinarias DECIMAL(18,2) NOT NULL,
 	valor_extraordinarias DECIMAL(18,2) NOT NULL,
-	valor_baulera INT NOT NULL,
-	valor_cochera INT NOT NULL,
+	valor_baulera DECIMAL(18,2) NOT NULL,
+	valor_cochera DECIMAL(18,2) NOT NULL,
 	CONSTRAINT FK_Det_Exp FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa),
 	CONSTRAINT FK_Det_UF  FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
 );

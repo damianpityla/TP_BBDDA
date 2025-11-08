@@ -47,12 +47,12 @@ EXEC bda.spGenerarExpensas
 	@FechaVencimiento2 = '2025-04-15'
 
 SELECT * FROM bda.Expensa
-SELECT * FROM bda.Detalle_Expensa
+SELECT * FROM bda.Detalle_Expensa ORDER BY id_expensa,id_uf
 
 SELECT * FROM bda.vExpensaGenerada ORDER BY Uf
 
---DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
---DELETE FROM bda.Detalle_Expensa
+DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
+DELETE FROM bda.Detalle_Expensa
 
---DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
---DELETE FROM bda.Expensa
+DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
+DELETE FROM bda.Expensa

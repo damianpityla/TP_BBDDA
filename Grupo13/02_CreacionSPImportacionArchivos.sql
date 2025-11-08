@@ -144,7 +144,7 @@ BEGIN
 		id_uf,
 		importe
 	)
-	SELECT id_unidad,(m2_baulera*10000) AS importe FROM bda.Unidad_Funcional uf
+	SELECT id_unidad,CAST((m2_baulera*10000) AS DECIMAL(18,2)) AS importe FROM bda.Unidad_Funcional uf
 	WHERE (m2_baulera*10000) > 0
 	AND NOT EXISTS(SELECT id_uf FROM bda.Baulera b WHERE uf.id_unidad = b.id_uf)
 
@@ -155,7 +155,7 @@ BEGIN
 		id_uf,
 		importe
 	)
-	SELECT id_unidad,(m2_cochera*10000) AS importe FROM bda.Unidad_Funcional uf
+	SELECT id_unidad,CAST((m2_cochera*10000) AS DECIMAL(18,2)) AS importe FROM bda.Unidad_Funcional uf
 	WHERE (m2_cochera*10000) > 0 
 	AND NOT EXISTS(SELECT id_uf FROM bda.Cochera c WHERE uf.id_unidad = c.id_uf)
 
@@ -651,19 +651,36 @@ BEGIN
 	INNER JOIN bda.Gastos_Ordinarios gao ON c.id_consorcio = gao.id_consorcio;
 
 	WITH Gastos_Ordinarios(id,importe) AS(
-		SELECT id_consorcio, sum(importe)
+		SELECT id_consorcio,sum(importe)
 		FROM bda.Gastos_Ordinarios 
 		WHERE mes = 4
 		GROUP BY id_consorcio
+	),
+	Pagos_Por_UF(id_unidad,importe) AS(
+		SELECT id_unidad,MAX(importe) AS importe
+		FROM bda.Pagos
+		WHERE MONTH(fecha_pago) = 4
+		GROUP BY id_unidad
+	),
+	ID_Pago_Por_UF(id_pago,id_unidad,importe,fecha_pago) AS(
+		SELECT b.id_pago,a.id_unidad,a.importe,b.fecha_pago FROM Pagos_Por_UF a INNER JOIN bda.Pagos b ON a.id_unidad = b.id_unidad AND a.importe = b.importe
 	)
-	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera)
-	SELECT e.id_expensa,uf.id_unidad,(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0)
+	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,id_pago,interes_por_mora,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera)
+	SELECT e.id_expensa,uf.id_unidad,p.id_pago,
+	CASE WHEN p.fecha_pago < @FechaVencimiento1 THEN 0
+		 WHEN p.fecha_pago > @FechaVencimiento1 AND p.fecha_pago < @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.02)
+		 WHEN p.fecha_pago > @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.05)
+	ELSE 0
+	END AS interes_por_mora,
+	(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0)
 	FROM bda.Expensa e
 	INNER JOIN bda.Unidad_Funcional uf ON e.id_consorcio = uf.id_consorcio
 	INNER JOIN Gastos_Ordinarios gao ON uf.id_consorcio = gao.id
-	FULL JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
-	FULL JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
-	FULL JOIN bda.Gastos_Extraordinarios gae ON gae.id_consorcio = uf.id_consorcio
+	INNER JOIN ID_Pago_Por_UF p ON p.id_unidad = uf.id_unidad
+	LEFT JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
+	LEFT JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
+	LEFT JOIN bda.Gastos_Extraordinarios gae ON gae.id_consorcio = uf.id_consorcio
+
 END
 GO
 
@@ -685,11 +702,12 @@ CREATE OR ALTER VIEW bda.vExpensaGenerada AS
 		CAST(uf.porcentaje AS DECIMAL(3,2)) AS '%', 
 		uf.piso + '-' + uf.depto AS 'Piso-Depto.',
 		p_i.Nombre + ' ' + p_i.Apellido AS 'Propietario/Inquilino',
+		de.interes_por_mora AS 'Interes por mora',
 		de.valor_ordinarias AS Gastos_Ordinarios,
 		de.valor_baulera AS Baulera,
 		de.valor_cochera AS Cochera,
 		de.valor_extraordinarias AS Gastos_Extraordinarios,
-		de.valor_ordinarias + de.valor_baulera + de.valor_cochera + de.valor_extraordinarias AS Total_A_Pagar
+		de.interes_por_mora + de.valor_ordinarias + de.valor_baulera + de.valor_cochera + de.valor_extraordinarias AS Total_A_Pagar
 	FROM Propietarios_Inquilinos_UF piuf
 	INNER JOIN Propietarios_Inquilinos p_i ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
 	INNER JOIN bda.Unidad_Funcional uf ON piuf.ID_UF = uf.id_unidad

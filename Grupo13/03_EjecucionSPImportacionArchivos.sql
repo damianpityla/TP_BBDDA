@@ -102,7 +102,7 @@ SELECT * FROM bda.Inquilino_en_UF
 EXEC bda.spImportarPagosConsorcios
 	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
 
-SELECT * FROM bda.pagos
+SELECT * FROM bda.Pagos
 
 --DBCC CHECKIDENT ('bda.Pagos', RESEED, 0);
 --DELETE FROM bda.Pagos
