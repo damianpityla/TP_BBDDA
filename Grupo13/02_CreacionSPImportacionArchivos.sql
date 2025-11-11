@@ -411,7 +411,7 @@ GO
 
 ------------------------------ SP para importar el detalle de los gastos por mes -----------------------------
 
-CREATE OR ALTER PROCEDURE bda.spImportarDetalleYGastos
+CREATE OR ALTER PROCEDURE bda.spImportarGastosOrdinarios
 	@RutaArchivo NVARCHAR(256),
 	@Anio SMALLINT = 2025 --ya que los datos no vienen con año
 AS
@@ -476,7 +476,7 @@ BEGIN
 		sLuz NVARCHAR(60) '$."SERVICIOS PUBLICOS-Luz"',
 		sInternet NVARCHAR(60) '$."SERVICIOS PUBLICOS-Internet"'
 	);
-	INSERT INTO bda.Gastos_Ordinarios (id_consorcio, mes, id_proveedor, tipo_gasto, nro_factura, importe)
+	INSERT INTO bda.Gastos_Ordinarios (id_consorcio, mes, tipo_gasto, importe)
 	SELECT 
 		c.id_consorcio,
 		CASE 
@@ -494,9 +494,7 @@ BEGIN
 			WHEN LTRIM(RTRIM(LOWER(t.mes))) LIKE 'diciembre%' THEN 12
 			ELSE NULL
 		END AS mes,
-		NULL AS id_proveedor,
 		v.tipo_gasto,
-		NULL AS nro_factura,
 		v.importe
 	FROM #tmpCarga t
 	JOIN bda.Consorcio c 
@@ -511,10 +509,11 @@ BEGIN
 		(N'SERVICIOS PUBLICOS-Luz', bda.fn_NormalizarImporte(t.sLuz)),
 		(N'SERVICIOS PUBLICOS-Internet', bda.fn_NormalizarImporte(t.sInternet))
 	) AS v(tipo_gasto, importe)
-	WHERE v.importe IS NOT NULL AND v.importe > 0;
+	WHERE v.importe IS NOT NULL AND v.importe > 0 AND
+	NOT EXISTS (SELECT t1.id_consorcio FROM bda.Gastos_Ordinarios t1 WHERE t1.id_consorcio = c.id_consorcio)
 
 	SET @FilasInsertadas = @@ROWCOUNT
-	SET @FilasDuplicadas = (SELECT COUNT(*) FROM #tmpCarga) - @FilasInsertadas
+	SET @FilasDuplicadas = (SELECT COUNT(*) FROM bda.Gastos_Ordinarios) - @FilasInsertadas
 
 	PRINT('Se ha importado el archivo de gastos ordinarios de cada consorcio
 	Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
@@ -640,47 +639,66 @@ GO
 ------------------------------ SP para generar las expensas -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.spGenerarExpensas
-	@Mes TINYINT,
-	@FechaEmision DATE,
-	@FechaVencimiento1 DATE,
-	@FechaVencimiento2 DATE
+	@MesInicio TINYINT,
+	@MesFin TINYINT
 AS
 BEGIN
-	INSERT INTO bda.Expensa
-	SELECT DISTINCT(c.id_consorcio),@Mes,@FechaEmision,@FechaVencimiento1,@FechaVencimiento2 FROM bda.Consorcio c
-	INNER JOIN bda.Gastos_Ordinarios gao ON c.id_consorcio = gao.id_consorcio;
+	DECLARE @MesActual TINYINT = @MesInicio,
+			@Anio INT = 2025,
+			@FechaEmision DATE,
+			@FechaVencimiento1 DATE,
+			@FechaVencimiento2 DATE;
 
-	WITH Gastos_Ordinarios(id,importe) AS(
-		SELECT id_consorcio,sum(importe)
-		FROM bda.Gastos_Ordinarios 
-		WHERE mes = 4
-		GROUP BY id_consorcio
-	),
-	Pagos_Por_UF(id_unidad,importe) AS(
-		SELECT id_unidad,MAX(importe) AS importe
-		FROM bda.Pagos
-		WHERE MONTH(fecha_pago) = 4
-		GROUP BY id_unidad
-	),
-	ID_Pago_Por_UF(id_pago,id_unidad,importe,fecha_pago) AS(
-		SELECT b.id_pago,a.id_unidad,a.importe,b.fecha_pago FROM Pagos_Por_UF a INNER JOIN bda.Pagos b ON a.id_unidad = b.id_unidad AND a.importe = b.importe
-	)
-	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,id_pago,interes_por_mora,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera)
-	SELECT e.id_expensa,uf.id_unidad,p.id_pago,
-	CASE WHEN p.fecha_pago < @FechaVencimiento1 THEN 0
-		 WHEN p.fecha_pago > @FechaVencimiento1 AND p.fecha_pago < @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.02)
-		 WHEN p.fecha_pago > @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.05)
-	ELSE 0
-	END AS interes_por_mora,
-	(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0)
-	FROM bda.Expensa e
-	INNER JOIN bda.Unidad_Funcional uf ON e.id_consorcio = uf.id_consorcio
-	INNER JOIN Gastos_Ordinarios gao ON uf.id_consorcio = gao.id
-	INNER JOIN ID_Pago_Por_UF p ON p.id_unidad = uf.id_unidad
-	LEFT JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
-	LEFT JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
-	LEFT JOIN bda.Gastos_Extraordinarios gae ON gae.id_consorcio = uf.id_consorcio
+	WHILE @MesActual <= @MesFin
+	BEGIN
+		SET @FechaEmision = DATEFROMPARTS(@Anio, @MesActual, 5);
+		SET @FechaVencimiento1 = DATEFROMPARTS(@Anio, @MesActual, 10);
+		SET @FechaVencimiento2 = DATEFROMPARTS(@Anio, @MesActual, 15);
 
+		INSERT INTO bda.Expensa
+		SELECT DISTINCT(c.id_consorcio),@MesActual,@FechaEmision,@FechaVencimiento1,@FechaVencimiento2 FROM bda.Consorcio c
+		INNER JOIN bda.Gastos_Ordinarios gao ON c.id_consorcio = gao.id_consorcio
+		WHERE gao.mes = @MesActual;
+
+		WITH Gastos_Ordinarios(id,importe) AS(
+			SELECT id_consorcio,sum(importe)
+			FROM bda.Gastos_Ordinarios 
+			WHERE mes = @MesActual
+			GROUP BY id_consorcio
+		),
+		Pagos_Por_UF(id_unidad,importe) AS(
+			SELECT id_unidad,MAX(importe) AS importe
+			FROM bda.Pagos
+			WHERE MONTH(fecha_pago) = @MesActual
+			GROUP BY id_unidad
+		),
+		ID_Pago_Por_UF(id_pago,id_unidad,importe,fecha_pago) AS(
+			SELECT b.id_pago,a.id_unidad,a.importe,b.fecha_pago FROM Pagos_Por_UF a INNER JOIN bda.Pagos b ON a.id_unidad = b.id_unidad AND a.importe = b.importe
+		)
+		INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,id_pago,interes_por_mora,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera,total)
+		SELECT e.id_expensa,uf.id_unidad,p.id_pago,
+		CASE WHEN p.fecha_pago < @FechaVencimiento1 THEN 0
+			 WHEN p.fecha_pago > @FechaVencimiento1 AND p.fecha_pago < @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.02)
+			 WHEN p.fecha_pago > @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.05)
+		ELSE 0
+		END AS interes_por_mora,
+		(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0),
+		(gao.importe*(uf.porcentaje/100)) + ISNULL((gae.importe*(uf.porcentaje/100)),0) + ISNULL(b.importe,0) + ISNULL(c.importe,0) + 
+		CASE WHEN p.fecha_pago < @FechaVencimiento1 THEN 0
+			 WHEN p.fecha_pago > @FechaVencimiento1 AND p.fecha_pago < @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.02)
+			 WHEN p.fecha_pago > @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.05)
+		ELSE 0 END
+		FROM bda.Expensa e
+		INNER JOIN bda.Unidad_Funcional uf ON e.id_consorcio = uf.id_consorcio
+		INNER JOIN Gastos_Ordinarios gao ON uf.id_consorcio = gao.id
+		INNER JOIN ID_Pago_Por_UF p ON p.id_unidad = uf.id_unidad
+		LEFT JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
+		LEFT JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
+		LEFT JOIN bda.Gastos_Extraordinarios gae ON gae.id_consorcio = uf.id_consorcio AND gae.mes = @MesActual
+		WHERE e.mes = @MesActual;
+
+		SET @MesActual += 1;
+	END
 END
 GO
 
@@ -696,19 +714,40 @@ CREATE OR ALTER VIEW bda.vExpensaGenerada AS
 		SELECT * FROM bda.Propietario
 		UNION
 		SELECT * FROM bda.Inquilino
+	),
+	Expensa_Calculada AS(
+		SELECT 
+			uf.id_unidad AS Uf,
+			e.mes AS Mes,
+			CAST(uf.porcentaje AS DECIMAL(3,2)) AS '%', 
+			uf.piso + '-' + uf.depto AS 'Piso-Depto.',
+			p_i.Nombre + ' ' + p_i.Apellido AS 'Propietario/Inquilino',
+
+			ISNULL(LAG(de.total) OVER(PARTITION BY uf.id_unidad ORDER BY e.mes),0) AS Saldo_anterior,
+
+			ISNULL(LAG(p.importe) OVER(PARTITION BY uf.id_unidad ORDER BY e.mes),0) AS Pago_recibido,
+
+			ISNULL(LAG(de.total) OVER(PARTITION BY uf.id_unidad ORDER BY e.mes) -
+			LAG(p.importe) OVER(PARTITION BY uf.id_unidad ORDER BY e.mes),0) AS Deuda,
+
+			de.interes_por_mora AS 'Interes por mora',
+			de.valor_ordinarias AS Gastos_Ordinarios,
+			de.valor_baulera AS Baulera,
+			de.valor_cochera AS Cochera,
+			de.valor_extraordinarias AS Gastos_Extraordinarios,
+			de.total +
+			(ISNULL(LAG(de.total) OVER(PARTITION BY uf.id_unidad ORDER BY e.mes) -
+			LAG(p.importe) OVER(PARTITION BY uf.id_unidad ORDER BY e.mes),0))
+			AS Total_A_Pagar
+		FROM Propietarios_Inquilinos_UF piuf
+		INNER JOIN Propietarios_Inquilinos p_i ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
+		INNER JOIN bda.Unidad_Funcional uf ON piuf.ID_UF = uf.id_unidad
+		INNER JOIN bda.Detalle_Expensa de ON uf.id_unidad = de.id_uf
+		INNER JOIN bda.Expensa e ON de.id_expensa = e.id_expensa
+		INNER JOIN bda.Pagos p ON de.id_pago = p.id_pago
 	)
-	SELECT 
-		uf.id_unidad AS Uf,
-		CAST(uf.porcentaje AS DECIMAL(3,2)) AS '%', 
-		uf.piso + '-' + uf.depto AS 'Piso-Depto.',
-		p_i.Nombre + ' ' + p_i.Apellido AS 'Propietario/Inquilino',
-		de.interes_por_mora AS 'Interes por mora',
-		de.valor_ordinarias AS Gastos_Ordinarios,
-		de.valor_baulera AS Baulera,
-		de.valor_cochera AS Cochera,
-		de.valor_extraordinarias AS Gastos_Extraordinarios,
-		de.interes_por_mora + de.valor_ordinarias + de.valor_baulera + de.valor_cochera + de.valor_extraordinarias AS Total_A_Pagar
-	FROM Propietarios_Inquilinos_UF piuf
-	INNER JOIN Propietarios_Inquilinos p_i ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
-	INNER JOIN bda.Unidad_Funcional uf ON piuf.ID_UF = uf.id_unidad
-	INNER JOIN bda.Detalle_Expensa de ON uf.id_unidad = de.id_uf
+	SELECT  Uf,Mes,[%],[Piso-Depto.],[Propietario/Inquilino],
+			ISNULL(LAG(Total_A_Pagar) OVER(PARTITION BY Uf ORDER BY Mes),0) AS Saldo_Anterior ,
+			Pago_recibido,Deuda,[Interes por mora],Gastos_Ordinarios,Gastos_Extraordinarios,Baulera,Cochera,Total_A_Pagar
+	FROM Expensa_Calculada
+GO

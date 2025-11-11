@@ -21,11 +21,11 @@ GO
 -- Consorcio
 IF OBJECT_ID('bda.Consorcio') IS NOT NULL DROP TABLE bda.Consorcio;
 CREATE TABLE bda.Consorcio (
-  id_consorcio INT IDENTITY(1,1) PRIMARY KEY,
-  nombre NVARCHAR(200) NOT NULL,
-  direccion NVARCHAR(200) NOT NULL,
-  cant_unidades_func INT NOT NULL,
-  m2_totales INT NOT NULL
+	id_consorcio INT IDENTITY(1,1) PRIMARY KEY,
+	nombre NVARCHAR(200) NOT NULL,
+	direccion NVARCHAR(200) NOT NULL,
+	cant_unidades_func INT NOT NULL,
+	m2_totales INT NOT NULL
 );
 
 -- Unidad_Funcional
@@ -121,7 +121,7 @@ CREATE TABLE bda.Proveedor (
 	CONSTRAINT FK_Proveedor_Consorcio FOREIGN KEY (ID_Consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );
 
---expensa
+-- Expensa
 IF OBJECT_ID('bda.Expensa') IS NOT NULL DROP TABLE bda.Expensa;
 CREATE TABLE bda.Expensa (
 	id_expensa INT IDENTITY(1,1) PRIMARY KEY,
@@ -149,6 +149,7 @@ CREATE TABLE bda.Detalle_Expensa (
 	valor_extraordinarias DECIMAL(18,2) NOT NULL,
 	valor_baulera DECIMAL(18,2) NOT NULL,
 	valor_cochera DECIMAL(18,2) NOT NULL,
+	total DECIMAL(18,2) NOT NULL,
 	CONSTRAINT FK_Det_Exp FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa),
 	CONSTRAINT FK_Det_UF  FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
 );
@@ -156,29 +157,26 @@ CREATE TABLE bda.Detalle_Expensa (
 -- Estado Financiero
 IF OBJECT_ID('bda.Estado_Financiero') IS NOT NULL DROP TABLE bda.Estado_Financiero;
 CREATE TABLE bda.Estado_Financiero (
-  id_estado INT IDENTITY(1,1) PRIMARY KEY,
-  id_expensa INT NOT NULL UNIQUE,
-  saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
-  ingresos_termino DECIMAL(18,2) NOT NULL DEFAULT 0,
-  ingresos_adeudados DECIMAL(18,2) NOT NULL DEFAULT 0,
-  ingresos_adelantados DECIMAL(18,2) NOT NULL DEFAULT 0,
-  egresos_mes DECIMAL(18,2) NOT NULL DEFAULT 0,
-  saldo_cierre AS (saldo_anterior + ingresos_termino + ingresos_adeudados + ingresos_adelantados - egresos_mes) PERSISTED,
-  CONSTRAINT FK_EF_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)
+	id_estado INT IDENTITY(1,1) PRIMARY KEY,
+	id_expensa INT NOT NULL UNIQUE,
+	saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_termino DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_adeudados DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_adelantados DECIMAL(18,2) NOT NULL DEFAULT 0,
+	egresos_mes DECIMAL(18,2) NOT NULL DEFAULT 0,
+	saldo_cierre AS (saldo_anterior + ingresos_termino + ingresos_adeudados + ingresos_adelantados - egresos_mes) PERSISTED,
+	CONSTRAINT FK_EF_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)
 );
 
 -- Gastos Ordinarios
 IF OBJECT_ID('bda.Gastos_Ordinarios') IS NOT NULL DROP TABLE bda.Gastos_Ordinarios;
 CREATE TABLE bda.Gastos_Ordinarios (
-  id_gasto_ordinario INT IDENTITY(1,1) PRIMARY KEY,
-  id_consorcio INT NOT NULL,
-  id_proveedor INT NULL,
-  mes TINYINT NOT NULL CHECK (mes BETWEEN 1 AND 12),
-  tipo_gasto NVARCHAR(100) NOT NULL,   -- banco/limpieza/admin/seguros/etc.
-  nro_factura NVARCHAR(50) NULL,
-  importe DECIMAL(18,2) NOT NULL,
-  CONSTRAINT FK_GO_consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio),
-  CONSTRAINT FK_GO_Proveedor FOREIGN KEY (id_proveedor) REFERENCES bda.Proveedor(id_proveedor)
+	id_gasto_ordinario INT IDENTITY(1,1) PRIMARY KEY,
+	id_consorcio INT NOT NULL,
+	mes TINYINT NOT NULL CHECK (mes BETWEEN 1 AND 12),
+	tipo_gasto NVARCHAR(100) NOT NULL,   -- banco/limpieza/admin/seguros/etc.
+	importe DECIMAL(18,2) NOT NULL,
+	CONSTRAINT FK_GO_consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );
 
 -- Gastos Extraordinarios
@@ -186,6 +184,7 @@ IF OBJECT_ID('bda.Gastos_Extraordinarios') IS NOT NULL DROP TABLE bda.Gastos_Ext
 CREATE TABLE bda.Gastos_Extraordinarios (
 	id_gasto_extraordinario INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
 	id_consorcio INT NOT NULL,
+	mes TINYINT NOT NULL,
 	--id_proveedor INT NOT NULL,
 	descripcion VARCHAR(100) NOT NULL,
 	importe DECIMAL(18,2) NOT NULL,
