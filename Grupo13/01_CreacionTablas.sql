@@ -21,13 +21,13 @@ GO
 -- Consorcio
 IF OBJECT_ID('bda.Consorcio') IS NOT NULL DROP TABLE bda.Consorcio;
 CREATE TABLE bda.Consorcio (
-	id_consorcio INT IDENTITY(1,1) PRIMARY KEY,
-	nombre NVARCHAR(200) NOT NULL,
-	direccion NVARCHAR(200) NOT NULL,
-	cant_unidades_func INT NOT NULL,
-	m2_totales INT NOT NULL
+    id_consorcio INT IDENTITY(1,1) PRIMARY KEY,
+    nombre VARCHAR(80) NOT NULL,
+    direccion VARCHAR(80) NOT NULL,
+    cant_unidades_func INT NOT NULL,
+    m2_totales INT NOT NULL
 );
-
+select * from bda.Consorcio
 -- Unidad_Funcional
 IF OBJECT_ID('bda.Unidad_Funcional') IS NOT NULL DROP TABLE bda.Unidad_Funcional;
 CREATE TABLE bda.Unidad_Funcional (
