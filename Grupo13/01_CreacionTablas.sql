@@ -27,7 +27,7 @@ CREATE TABLE bda.Consorcio (
     cant_unidades_func INT NOT NULL,
     m2_totales INT NOT NULL
 );
-select * from bda.Consorcio
+
 -- Unidad_Funcional
 IF OBJECT_ID('bda.Unidad_Funcional') IS NOT NULL DROP TABLE bda.Unidad_Funcional;
 CREATE TABLE bda.Unidad_Funcional (
@@ -142,8 +142,9 @@ CREATE TABLE bda.Detalle_Expensa (
 	id_detalle INT IDENTITY(1,1) PRIMARY KEY,
 	id_expensa INT NOT NULL,
 	id_uf INT NOT NULL,
-	id_pago INT NOT NULL,
-	--pago_recibido DECIMAL(18,2) NOT NULL,
+	saldo_anterior DECIMAL(18,2) NOT NULL,
+	pago_recibido DECIMAL(18,2) NOT NULL,
+	deuda DECIMAL(18,2) NOT NULL,
 	interes_por_mora DECIMAL(18,2) NOT NULL,
 	valor_ordinarias DECIMAL(18,2) NOT NULL,
 	valor_extraordinarias DECIMAL(18,2) NOT NULL,

@@ -356,19 +356,41 @@ EXEC bda.spAltaGastoExtraordinario
     @Descripcion = 'Reparacion ascensor',
     @Importe = 0;
 
------------------------------- GENERACION DE EXPENSAS DEL MES DE ABRIL -----------------------------
+------------------------------ GENERACION DE EXPENSAS -----------------------------
+
+EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Azcuenaga';
+EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Alzaga';
+EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Alberdi';
+EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Unzue';
+EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Pereyra Iraola';
+
+-- MES DE ABRIL
 
 EXEC bda.spGenerarExpensas
-	@MesInicio = 4,
-	@MesFin = 7
+	@Mes = 4
 
+-- MES DE MAYO
+
+EXEC bda.spGenerarExpensas
+	@Mes = 5
+
+-- MES DE JUNIO
+
+EXEC bda.spGenerarExpensas
+	@Mes = 6
+
+-- MES DE JULIO
+
+EXEC bda.spGenerarExpensas
+	@Mes = 7
+
+/*
 SELECT * FROM bda.Expensa
 SELECT * FROM bda.Detalle_Expensa ORDER BY id_expensa,id_uf
-
-SELECT * FROM bda.vExpensaGenerada ORDER BY Uf
 
 DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
 DELETE FROM bda.Detalle_Expensa
 
 DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
 DELETE FROM bda.Expensa
+*/
