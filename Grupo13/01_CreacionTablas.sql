@@ -161,11 +161,9 @@ CREATE TABLE bda.Estado_Financiero (
 	id_estado INT IDENTITY(1,1) PRIMARY KEY,
 	id_expensa INT NOT NULL UNIQUE,
 	saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
-	ingresos_termino DECIMAL(18,2) NOT NULL DEFAULT 0,
-	ingresos_adeudados DECIMAL(18,2) NOT NULL DEFAULT 0,
-	ingresos_adelantados DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_mes DECIMAL(18,2) NOT NULL DEFAULT 0,
 	egresos_mes DECIMAL(18,2) NOT NULL DEFAULT 0,
-	saldo_cierre AS (saldo_anterior + ingresos_termino + ingresos_adeudados + ingresos_adelantados - egresos_mes) PERSISTED,
+	saldo_cierre DECIMAL(18,2) NOT NULL DEFAULT 0,
 	CONSTRAINT FK_EF_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)
 );
 
@@ -204,9 +202,5 @@ CREATE TABLE bda.Pagos (
 	importe DECIMAL(18,2) NOT NULL CHECK (importe >= 0),
 	asociado BIT NULL DEFAULT(0),
 	id_unidad INT NULL,
-	id_expensa INT NULL,
 	CONSTRAINT FK_Pagos_UF FOREIGN KEY (id_unidad) REFERENCES bda.Unidad_Funcional(id_unidad),
-	CONSTRAINT FK_Pagos_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)
 );
-CREATE INDEX IX_Pagos_Asociacion  ON bda.Pagos(asociado, id_unidad, id_expensa);
-CREATE INDEX IX_Pagos_CuentaFecha ON bda.Pagos(cta_origen, fecha_pago);

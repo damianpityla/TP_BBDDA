@@ -659,6 +659,11 @@ BEGIN
 		fecha_pago DATE
 	);
 
+	CREATE TABLE #tmpValoresEFMesAnterior(
+		id_expensa INT,
+		saldo_anterior DECIMAL(18,2)
+	);
+
 	WITH ValoresMesAnterior(id_uf,total,importePago) AS(
 		SELECT de.id_uf,de.total,MAX(p.importe) FROM bda.Detalle_Expensa de
 		LEFT JOIN bda.Pagos p ON p.id_unidad = de.id_uf AND MONTH(p.fecha_pago) = @Mes - 1
@@ -667,7 +672,13 @@ BEGIN
 	INSERT INTO #tmpValoresMesAnterior (id_uf,saldo_anterior,pago_recibido,fecha_pago)
 	SELECT id_uf,total,ISNULL(importePago,0),p.fecha_pago FROM ValoresMesAnterior vma
 	LEFT JOIN bda.Pagos p ON vma.id_uf = p.id_unidad AND p.importe = vma.importePago
-	ORDER BY vma.id_uf
+	ORDER BY vma.id_uf;
+
+	WITH ValoresEFMesAnterior(id_expensa,total) AS(
+		SELECT ef.id_expensa,ef.saldo_cierre FROM bda.Estado_Financiero ef
+	)
+	INSERT INTO #tmpValoresEFMesAnterior (id_expensa,saldo_anterior)
+	SELECT id_expensa,total FROM ValoresEFMesAnterior vefma;
 
 	SELECT TOP 1 @FechaExpensaMesAnterior = fecha_emision FROM bda.Expensa
 	SELECT TOP 1 @FechaVencimiento1MesAnterior = vencimiento1 FROM bda.Expensa
@@ -675,6 +686,9 @@ BEGIN
 
 	DELETE FROM bda.Detalle_Expensa
 	DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
+
+	DELETE FROM bda.Estado_Financiero
+	DBCC CHECKIDENT ('bda.Estado_Financiero', RESEED, 0);
 
 	DELETE FROM bda.Expensa
 	DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
@@ -689,7 +703,31 @@ BEGIN
 	WHERE gao.mes = @Mes;
 
 	WITH Gastos_Ordinarios(id,importe) AS(
-		SELECT id_consorcio,sum(importe)
+		SELECT id_consorcio,SUM(importe)
+		FROM bda.Gastos_Ordinarios 
+		WHERE mes = @Mes - 1
+		GROUP BY id_consorcio
+	),
+	Gastos_Extraordinarios(id,importe) AS(
+		SELECT id_consorcio,SUM(importe)
+		FROM bda.Gastos_Extraordinarios
+		WHERE mes = @Mes - 1
+		GROUP BY id_consorcio
+	),
+	Ingresos_mes(id,importe) AS(
+		SELECT uf.id_consorcio,SUM(p.importe)/5 FROM bda.Pagos p
+		INNER JOIN bda.Unidad_Funcional uf ON p.id_unidad = uf.id_unidad
+		WHERE MONTH(fecha_pago) = @Mes - 1
+		GROUP BY uf.id_consorcio
+	)
+	INSERT INTO bda.Estado_Financiero(id_expensa,saldo_anterior,ingresos_mes,egresos_mes,saldo_cierre)
+	SELECT im.id,ISNULL(vefma.saldo_anterior,0),im.importe,(gao.importe + ISNULL(gae.importe,0)),(ISNULL(vefma.saldo_anterior,0) + im.importe - (gao.importe + ISNULL(gae.importe,0))) FROM Ingresos_mes im
+	INNER JOIN Gastos_Ordinarios gao ON im.id = gao.id
+	LEFT JOIN Gastos_Extraordinarios gae ON im.id = gae.id
+	LEFT JOIN #tmpValoresEFMesAnterior vefma ON im.id = vefma.id_expensa;
+
+	WITH Gastos_Ordinarios(id,importe) AS(
+		SELECT id_consorcio,SUM(importe)
 		FROM bda.Gastos_Ordinarios 
 		WHERE mes = @Mes
 		GROUP BY id_consorcio
@@ -731,7 +769,7 @@ BEGIN
 END
 GO
 
------------------------------- VIEW que muestra la expensa generada por consorcio -----------------------------
+------------------------------ SP que muestra la expensa generada por consorcio -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.spMostrarExpensaGenerada
 	@NombreConsorcio VARCHAR(80)

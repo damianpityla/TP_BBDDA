@@ -364,6 +364,8 @@ EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Alberdi';
 EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Unzue';
 EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Pereyra Iraola';
 
+SELECT * FROM bda.Estado_Financiero
+
 -- MES DE ABRIL
 
 EXEC bda.spGenerarExpensas
@@ -390,6 +392,9 @@ SELECT * FROM bda.Detalle_Expensa ORDER BY id_expensa,id_uf
 
 DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
 DELETE FROM bda.Detalle_Expensa
+
+DBCC CHECKIDENT ('bda.Estado_Financiero', RESEED, 0);
+DELETE FROM bda.Estado_Financiero
 
 DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
 DELETE FROM bda.Expensa
