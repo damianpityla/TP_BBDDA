@@ -648,18 +648,30 @@ BEGIN
 			@FechaEmision DATE,
 			@FechaVencimiento1 DATE,
 			@FechaVencimiento2 DATE,
+			@FechaExpensaMesAnterior DATE,
+			@FechaVencimiento1MesAnterior DATE,
+			@FechaVencimiento2MesAnterior DATE;
 
 	CREATE TABLE #tmpValoresMesAnterior(
 		id_uf INT,
 		saldo_anterior DECIMAL(18,2),
-		pago_recibido DECIMAL(18,2)
-	)
-	INSERT INTO #tmpValoresMesAnterior (id_uf,saldo_anterior,pago_recibido)
+		pago_recibido DECIMAL(18,2),
+		fecha_pago DATE
+	);
+
+	WITH ValoresMesAnterior(id_uf,total,importePago) AS(
 		SELECT de.id_uf,de.total,MAX(p.importe) FROM bda.Detalle_Expensa de
-		INNER JOIN bda.Pagos p ON p.id_unidad = de.id_uf 
-		WHERE MONTH(p.fecha_pago) = @Mes - 1
+		LEFT JOIN bda.Pagos p ON p.id_unidad = de.id_uf AND MONTH(p.fecha_pago) = @Mes - 1
 		GROUP BY de.id_uf,de.total
-		ORDER BY de.id_uf
+	)
+	INSERT INTO #tmpValoresMesAnterior (id_uf,saldo_anterior,pago_recibido,fecha_pago)
+	SELECT id_uf,total,ISNULL(importePago,0),p.fecha_pago FROM ValoresMesAnterior vma
+	LEFT JOIN bda.Pagos p ON vma.id_uf = p.id_unidad AND p.importe = vma.importePago
+	ORDER BY vma.id_uf
+
+	SELECT TOP 1 @FechaExpensaMesAnterior = fecha_emision FROM bda.Expensa
+	SELECT TOP 1 @FechaVencimiento1MesAnterior = vencimiento1 FROM bda.Expensa
+	SELECT TOP 1 @FechaVencimiento2MesAnterior = vencimiento2 FROM bda.Expensa
 
 	DELETE FROM bda.Detalle_Expensa
 	DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
@@ -668,8 +680,8 @@ BEGIN
 	DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
 
 	SET @FechaEmision = DATEFROMPARTS(@Anio, @Mes, 5);
-	SET @FechaVencimiento1 = DATEFROMPARTS(@Anio, @Mes, 10);
-	SET @FechaVencimiento2 = DATEFROMPARTS(@Anio, @Mes, 12);
+	SET @FechaVencimiento1 = DATEFROMPARTS(@Anio, @Mes, 15);
+	SET @FechaVencimiento2 = DATEFROMPARTS(@Anio, @Mes, 25);
 
 	INSERT INTO bda.Expensa
 	SELECT DISTINCT(c.id_consorcio),@Mes,@FechaEmision,@FechaVencimiento1,@FechaVencimiento2 FROM bda.Consorcio c
@@ -681,43 +693,40 @@ BEGIN
 		FROM bda.Gastos_Ordinarios 
 		WHERE mes = @Mes
 		GROUP BY id_consorcio
-	),
-	Pagos_Por_UF(id_unidad,importe) AS(
-		SELECT id_unidad,MAX(importe) AS importe
-		FROM bda.Pagos
-		WHERE MONTH(fecha_pago) = (@Mes - 1)
-		GROUP BY id_unidad
-	),
-	ID_Pago_Por_UF(id_pago,id_unidad,importe,fecha_pago) AS(
-		SELECT b.id_pago,a.id_unidad,a.importe,b.fecha_pago FROM Pagos_Por_UF a INNER JOIN bda.Pagos b ON a.id_unidad = b.id_unidad AND a.importe = b.importe
 	)
 	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,saldo_anterior,pago_recibido,deuda,interes_por_mora,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera,total)
-	SELECT e.id_expensa,uf.id_unidad,ISNULL(ant.saldo_anterior,0),ISNULL(ant.pago_recibido,0),(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)),0,
-	/*
-	CASE WHEN p.fecha_pago < @FechaVencimiento1 THEN 0
-			WHEN p.fecha_pago > @FechaVencimiento1 AND p.fecha_pago < @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.02)
-			WHEN p.fecha_pago > @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.05)
-	
-	ELSE 0
+	SELECT e.id_expensa,uf.id_unidad,ISNULL(ant.saldo_anterior,0),ISNULL(ant.pago_recibido,0),(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)),
+	CASE 
+		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) > 0
+			THEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * 0.05
+		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) <= 0
+			THEN 0
 	END AS interes_por_mora,
-	*/
 	(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0),
 	(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) + 
-	(gao.importe*(uf.porcentaje/100)) + ISNULL((gae.importe*(uf.porcentaje/100)),0) + ISNULL(b.importe,0) + ISNULL(c.importe,0) + 0
-	/*
-	CASE WHEN p.fecha_pago < @FechaVencimiento1 THEN 0
-			WHEN p.fecha_pago > @FechaVencimiento1 AND p.fecha_pago < @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.02)
-			WHEN p.fecha_pago > @FechaVencimiento2 THEN ((gao.importe*(uf.porcentaje/100))*0.05)
-	ELSE 0 END
-	*/
+	(gao.importe*(uf.porcentaje/100)) + ISNULL((gae.importe*(uf.porcentaje/100)),0) + ISNULL(b.importe,0) + ISNULL(c.importe,0) + 
+	CASE 
+		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) > 0
+			THEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * 0.05
+		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) <= 0
+			THEN 0
+		/*
+		WHEN ISNULL(ant.pago_recibido,0) = 0 AND (ISNULL(ant.saldo_anterior,0)) > 0 THEN
+			(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * 1.05 - (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0))
+		WHEN ant.fecha_pago < @FechaVencimiento1MesAnterior THEN 0
+		WHEN ant.fecha_pago > @FechaVencimiento1MesAnterior AND ant.fecha_pago < @FechaVencimiento2MesAnterior THEN 
+			(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * (1 + ((DAY(ant.fecha_pago) - DAY(@FechaExpensaMesAnterior)) * 0.06667) / 100) - (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0))
+		WHEN ant.fecha_pago > @FechaVencimiento2MesAnterior THEN
+			(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * (1 + ((DAY(ant.fecha_pago) - DAY(@FechaExpensaMesAnterior)) * 0.1667) / 100) - (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0))
+		*/
+	END
 	FROM bda.Expensa e
 	INNER JOIN bda.Unidad_Funcional uf ON e.id_consorcio = uf.id_consorcio
 	INNER JOIN Gastos_Ordinarios gao ON uf.id_consorcio = gao.id
-	LEFT JOIN ID_Pago_Por_UF p ON p.id_unidad = uf.id_unidad
 	LEFT JOIN bda.Baulera b ON uf.id_unidad = b.id_uf
 	LEFT JOIN bda.Cochera c ON uf.id_unidad = c.id_uf
 	LEFT JOIN bda.Gastos_Extraordinarios gae ON gae.id_consorcio = uf.id_consorcio AND gae.mes = @Mes
-	LEFT JOIN #tmpValoresMesAnterior ant ON p.id_unidad = ant.id_uf
+	LEFT JOIN #tmpValoresMesAnterior ant ON uf.id_unidad = ant.id_uf
 	WHERE e.mes = @Mes
 END
 GO
