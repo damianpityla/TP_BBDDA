@@ -52,6 +52,3 @@ EXEC bda.sp_Reporte6_PagosIntervalos	--Filtar por fechas
 
 EXEC bda.sp_Reporte6_PagosIntervalos	--Filtar por consorcio sin rango de fechas
     @IdConsorcio = 2;					--
-
-
-
