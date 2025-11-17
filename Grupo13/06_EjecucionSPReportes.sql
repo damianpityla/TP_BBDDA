@@ -23,6 +23,10 @@ exec bda.spReporte1Expensas
 	@NombreConsorcio= 'Azcuenaga',
     @Mes= 6;
 ------------------------------ Reporte 2 -----------------------------
+exec bda.sp_ReportePagosPorDeptoMensual 
+    @id_consorcio = 2,
+    @Anio= 2025;
+
 
 ------------------------------ Reporte 3 -----------------------------
 

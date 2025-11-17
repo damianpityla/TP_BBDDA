@@ -69,6 +69,120 @@ END;
 GO
 
 ------------------------------ Reporte 2 -----------------------------
+CREATE OR ALTER PROCEDURE bda.sp_ReportePagosPorDeptoMensual
+(
+    @id_consorcio INT,
+    @anio INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @ColumnasParaPivot NVARCHAR(MAX);
+    DECLARE @ColumnasParaSelect NVARCHAR(MAX);
+    DECLARE @SQLQuery NVARCHAR(MAX);
+
+    SELECT 
+        @ColumnasParaPivot = STUFF((
+            SELECT
+                ',' + QUOTENAME(CAST(id_unidad AS VARCHAR(10)))
+            FROM bda.Unidad_Funcional
+            WHERE id_consorcio = @id_consorcio
+            ORDER BY 
+                CASE 
+                    WHEN piso = 'PB' THEN 0 
+                    ELSE TRY_CAST(piso AS INT) 
+                END,
+                depto
+            FOR XML PATH(''), TYPE
+        ).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SELECT 
+        @ColumnasParaSelect = STUFF((
+            SELECT
+                ', ISNULL(' 
+                + QUOTENAME(CAST(id_unidad AS VARCHAR(10))) 
+                + ', 0) AS ' 
+                + QUOTENAME(piso + depto)
+            FROM bda.Unidad_Funcional
+            WHERE id_consorcio = @id_consorcio
+            ORDER BY 
+                CASE 
+                    WHEN piso = 'PB' THEN 0 
+                    ELSE TRY_CAST(piso AS INT) 
+                END,
+                depto
+            FOR XML PATH(''), TYPE
+        ).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    IF @ColumnasParaPivot IS NULL
+    BEGIN
+        PRINT 'No se encontraron Unidades Funcionales para el Consorcio ID: ' + CAST(@id_consorcio AS VARCHAR);
+        RETURN;
+    END;
+
+    SET @SQLQuery = N'
+
+    -- CTE de meses
+    WITH TodosLosMeses AS (
+        SELECT 1 AS MesNumero, ''Enero'' AS MesNombre UNION ALL
+        SELECT 2, ''Febrero'' UNION ALL
+        SELECT 3, ''Marzo'' UNION ALL
+        SELECT 4, ''Abril'' UNION ALL
+        SELECT 5, ''Mayo'' UNION ALL
+        SELECT 6, ''Junio'' UNION ALL
+        SELECT 7, ''Julio'' UNION ALL
+        SELECT 8, ''Agosto'' UNION ALL
+        SELECT 9, ''Septiembre'' UNION ALL
+        SELECT 10, ''Octubre'' UNION ALL
+        SELECT 11, ''Noviembre'' UNION ALL
+        SELECT 12, ''Diciembre''
+    ),
+
+    PagosDelAnio AS (
+        SELECT
+            MONTH(p.fecha_pago) AS mes_pago,
+            u.id_unidad,
+            p.importe
+        FROM bda.Pagos p
+        JOIN bda.Unidad_Funcional u ON p.id_unidad = u.id_unidad
+        WHERE
+            u.id_consorcio = @ParamConsorcio
+            AND YEAR(p.fecha_pago) = @ParamAnio
+    ),
+
+    BaseData AS (
+        SELECT
+            M.MesNombre,
+            M.MesNumero,
+            P.id_unidad,
+            P.importe
+        FROM TodosLosMeses M
+        LEFT JOIN PagosDelAnio P
+            ON M.MesNumero = P.mes_pago
+    )
+
+    SELECT
+        MesNombre,
+        ' + @ColumnasParaSelect + N'
+    FROM BaseData
+    PIVOT (
+        SUM(importe)
+        FOR id_unidad IN (' + @ColumnasParaPivot + N')
+    ) AS Cruzado
+    ORDER BY MesNumero;
+    ';
+
+
+    EXEC sp_executesql
+        @SQLQuery,
+        N'@ParamConsorcio INT, @ParamAnio INT',
+        @ParamConsorcio = @id_consorcio,
+        @ParamAnio = @anio;
+
+END;
+GO
+
 
 ------------------------------ Reporte 3 -----------------------------
 
