@@ -186,7 +186,7 @@ AS
 	ORDER BY deuda DESC
 GO
 
------------------------------- Reporte 6 - Estandar -----------------------------
+------------------------------ Reporte 6 -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
 (
