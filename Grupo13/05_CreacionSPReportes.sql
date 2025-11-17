@@ -198,7 +198,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    ;WITH PagosPorExpensa AS
+    WITH PagosPorExpensa AS
     (
         SELECT
             uf.id_unidad,
