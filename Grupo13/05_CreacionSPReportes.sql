@@ -19,55 +19,80 @@ USE Com2900G13
 GO
 
 ------------------------------ Reporte 1 -----------------------------
-CREATE OR ALTER PROCEDURE bda.spReporte1Expensas
+CREATE OR ALTER PROCEDURE bda.spReporteFlujoCajaSemanal
     @NombreConsorcio VARCHAR(80),
     @Mes TINYINT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    WITH Propietarios_Inquilinos_UF AS(
-        SELECT * FROM bda.Propietario_en_UF
-        UNION
-        SELECT * FROM bda.Inquilino_en_UF
+
+    ;WITH PagosMes AS (
+        SELECT p.id_pago,p.fecha_pago, p.importe,DATEPART(WEEK, p.fecha_pago) AS semana
+        FROM bda.Pagos p
+        INNER JOIN bda.Unidad_Funcional uf 
+            ON p.id_unidad = uf.id_unidad
+        INNER JOIN bda.Consorcio c 
+            ON uf.id_consorcio = c.id_consorcio
+        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+          AND MONTH(p.fecha_pago) = @Mes
     ),
-    Propietarios_Inquilinos AS(
-        SELECT * FROM bda.Propietario
-        UNION
-        SELECT * FROM bda.Inquilino
+
+
+    Gastos AS (
+        SELECT 
+            COALESCE(SUM(gao.importe), 0) AS gasto_ordinario,
+            COALESCE(SUM(gae.importe), 0) AS gasto_extraordinario,
+            COALESCE(SUM(gao.importe), 0) +
+            COALESCE(SUM(gae.importe), 0) AS gasto_total
+        FROM bda.Gastos_Ordinarios gao
+        INNER JOIN bda.Consorcio c
+            ON gao.id_consorcio = c.id_consorcio
+        LEFT JOIN bda.Gastos_Extraordinarios gae
+            ON gae.id_consorcio = gao.id_consorcio
+           AND gae.mes = gao.mes
+        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+          AND gao.mes = @Mes - 1         -- mes anterior
+    ),
+
+    PagosRepartidos AS (
+        SELECT p.id_pago,p.semana,p.fecha_pago,p.importe,
+            CASE 
+                WHEN g.gasto_total = 0 THEN p.importe
+                ELSE p.importe * (g.gasto_ordinario * 1.0 / g.gasto_total)
+            END AS pago_ordinario,
+            CASE 
+                WHEN g.gasto_total = 0 THEN 0
+                ELSE p.importe * (g.gasto_extraordinario * 1.0 / g.gasto_total)
+            END AS pago_extraordinario
+        FROM PagosMes p
+        CROSS JOIN Gastos g
+    ),
+
+
+    Semanas AS (
+        SELECT semana,SUM(pago_ordinario) AS total_ordinario,SUM(pago_extraordinario) AS total_extraordinario,
+            SUM(pago_ordinario + pago_extraordinario) AS total_semana
+        FROM PagosRepartidos
+        GROUP BY semana
     )
+
     SELECT
-        c.nombre                          AS Consorcio,
-        e.mes                             AS Mes,
-        uf.numero_unidad                  AS Unidad,
-        uf.piso + '-' + uf.depto          AS Piso_Depto,
-        p_i.Nombre + ' ' + p_i.Apellido   AS Propietario_Inquilino,
-        de.saldo_anterior,
-        de.pago_recibido,
-        de.deuda,
-        de.interes_por_mora,
-        de.valor_ordinarias,
-        de.valor_extraordinarias,
-        de.valor_baulera,
-        de.valor_cochera,
-        de.total                          AS Total_A_Pagar
-    FROM bda.Detalle_Expensa de
-    INNER JOIN Propietarios_Inquilinos_UF piuf 
-        ON de.id_uf = piuf.ID_UF               
-    INNER JOIN Propietarios_Inquilinos p_i 
-        ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
-    INNER JOIN bda.Unidad_Funcional uf 
-        ON piuf.ID_UF = uf.id_unidad
-    INNER JOIN bda.Expensa e 
-        ON de.id_expensa = e.id_expensa
-    INNER JOIN bda.Consorcio c 
-        ON uf.id_consorcio = c.id_consorcio
-    WHERE (c.nombre = @NombreConsorcio OR @NombreConsorcio IS NULL)
-      AND e.mes = @Mes
-    ORDER BY uf.numero_unidad;
+        @NombreConsorcio AS consorcio,
+        @Mes AS mes,
+        semana AS semana,
+        total_ordinario AS recaudacion_ordinaria,
+        total_extraordinario AS recaudacion_extraordinaria,
+        total_semana     AS total_semana,
+        AVG(total_semana) OVER () AS promedio_periodo,
+        SUM(total_semana) OVER (
+            ORDER BY semana
+            ROWS UNBOUNDED PRECEDING
+        ) AS acumulado_progresivo
+    FROM Semanas
+    ORDER BY semana;
 END;
 GO
-
 ------------------------------ Reporte 2 -----------------------------
 CREATE OR ALTER PROCEDURE bda.sp_ReportePagosPorDeptoMensual
 (
@@ -185,6 +210,88 @@ GO
 
 
 ------------------------------ Reporte 3 -----------------------------
+CREATE OR ALTER PROCEDURE bda.spReporteRecaudacionPorProcedencia
+    @NombreConsorcio VARCHAR(80),
+    @MesDesde        TINYINT,
+    @MesHasta        TINYINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH PagosPorMes AS (
+        SELECT MONTH(p.fecha_pago) AS mes, SUM(p.importe)      AS TotalPagos
+        FROM bda.Pagos p
+        INNER JOIN bda.Unidad_Funcional uf
+            ON p.id_unidad = uf.id_unidad
+        INNER JOIN bda.Consorcio c
+            ON uf.id_consorcio = c.id_consorcio
+        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+          AND MONTH(p.fecha_pago) BETWEEN @MesDesde AND @MesHasta
+        GROUP BY MONTH(p.fecha_pago)
+    ),
+
+
+    DeudaPorMes AS (
+        SELECT
+            e.mes,
+            SUM(de.valor_ordinarias) AS DeudaOrdinarias,
+            SUM(de.valor_extraordinarias) AS DeudaExtraordinarias,SUM(de.valor_baulera) AS DeudaBaulera,SUM(de.valor_cochera) AS DeudaCochera,
+            SUM(de.valor_ordinarias + de.valor_extraordinarias+ de.valor_baulera+ de.valor_cochera) AS DeudaTotal
+        FROM bda.Detalle_Expensa de
+        INNER JOIN bda.Expensa e
+            ON de.id_expensa = e.id_expensa
+        INNER JOIN bda.Consorcio c
+            ON e.id_consorcio = c.id_consorcio
+        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+          AND e.mes BETWEEN @MesDesde AND @MesHasta
+        GROUP BY e.mes
+    ),
+
+
+    Proporciones AS (
+        SELECT mes,DeudaOrdinarias,DeudaExtraordinarias,DeudaBaulera,DeudaCochera,DeudaTotal,
+            CASE WHEN DeudaTotal = 0 THEN 0 ELSE DeudaOrdinarias      / DeudaTotal END AS PropOrd,
+            CASE WHEN DeudaTotal = 0 THEN 0 ELSE DeudaExtraordinarias / DeudaTotal END AS PropExt,
+            CASE WHEN DeudaTotal = 0 THEN 0 ELSE DeudaBaulera         / DeudaTotal END AS PropBau,
+            CASE WHEN DeudaTotal = 0 THEN 0 ELSE DeudaCochera         / DeudaTotal END AS PropCoch
+        FROM DeudaPorMes
+    )
+
+    SELECT
+        @NombreConsorcio AS Consorcio,
+        pg.mes,
+        -- si no hay proporciones, todo el pago va como Ordinario
+        CAST(
+            CASE WHEN pr.DeudaTotal IS NULL OR pr.DeudaTotal = 0
+                 THEN pg.TotalPagos
+                 ELSE pg.TotalPagos * ISNULL(pr.PropOrd, 0)
+            END AS DECIMAL(18,2)
+        ) AS Ordinarias,
+        CAST(
+            CASE WHEN pr.DeudaTotal IS NULL OR pr.DeudaTotal = 0
+                 THEN 0
+                 ELSE pg.TotalPagos * ISNULL(pr.PropExt, 0)
+            END AS DECIMAL(18,2)
+        ) AS Extraordinarias,
+        CAST(
+            CASE WHEN pr.DeudaTotal IS NULL OR pr.DeudaTotal = 0
+                 THEN 0
+                 ELSE pg.TotalPagos * ISNULL(pr.PropBau, 0)
+            END AS DECIMAL(18,2)
+        ) AS Baulera,
+        CAST(
+            CASE WHEN pr.DeudaTotal IS NULL OR pr.DeudaTotal = 0
+                 THEN 0
+                 ELSE pg.TotalPagos * ISNULL(pr.PropCoch, 0)
+            END AS DECIMAL(18,2)
+        ) AS Cochera,
+        CAST(pg.TotalPagos AS DECIMAL(18,2)) AS Total
+    FROM PagosPorMes pg
+    LEFT JOIN Proporciones pr
+           ON pr.mes = pg.mes
+    ORDER BY pg.mes;
+END;
+GO
 
 ------------------------------ Reporte 4 -----------------------------
 CREATE OR ALTER PROCEDURE bda.spTopMesesIngresosGastos

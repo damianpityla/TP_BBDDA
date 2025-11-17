@@ -19,9 +19,9 @@ USE Com2900G13
 GO
 
 ------------------------------ Reporte 1 -----------------------------
-exec bda.spReporte1Expensas 
-	@NombreConsorcio= 'Azcuenaga',
-    @Mes= 6;
+EXEC bda.spReporteFlujoCajaSemanal
+    @NombreConsorcio = 'Azcuenaga',
+    @Mes = 6;
 ------------------------------ Reporte 2 -----------------------------
 exec bda.sp_ReportePagosPorDeptoMensual 
     @id_consorcio = 2,
@@ -29,7 +29,10 @@ exec bda.sp_ReportePagosPorDeptoMensual
 
 
 ------------------------------ Reporte 3 -----------------------------
-
+EXEC bda.spReporteRecaudacionPorProcedencia
+    @NombreConsorcio = 'Azcuenaga',
+    @MesDesde = 4,
+    @MesHasta = 7;
 ------------------------------ Reporte 4 -----------------------------
 EXEC bda.spTopMesesIngresosGastos 
     @IdConsorcio = 1,
