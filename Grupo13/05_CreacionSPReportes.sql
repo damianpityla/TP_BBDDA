@@ -19,6 +19,54 @@ USE Com2900G13
 GO
 
 ------------------------------ Reporte 1 -----------------------------
+CREATE OR ALTER PROCEDURE bda.spReporte1Expensas
+    @NombreConsorcio VARCHAR(80),
+    @Mes TINYINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    WITH Propietarios_Inquilinos_UF AS(
+        SELECT * FROM bda.Propietario_en_UF
+        UNION
+        SELECT * FROM bda.Inquilino_en_UF
+    ),
+    Propietarios_Inquilinos AS(
+        SELECT * FROM bda.Propietario
+        UNION
+        SELECT * FROM bda.Inquilino
+    )
+    SELECT
+        c.nombre                          AS Consorcio,
+        e.mes                             AS Mes,
+        uf.numero_unidad                  AS Unidad,
+        uf.piso + '-' + uf.depto          AS Piso_Depto,
+        p_i.Nombre + ' ' + p_i.Apellido   AS Propietario_Inquilino,
+        de.saldo_anterior,
+        de.pago_recibido,
+        de.deuda,
+        de.interes_por_mora,
+        de.valor_ordinarias,
+        de.valor_extraordinarias,
+        de.valor_baulera,
+        de.valor_cochera,
+        de.total                          AS Total_A_Pagar
+    FROM bda.Detalle_Expensa de
+    INNER JOIN Propietarios_Inquilinos_UF piuf 
+        ON de.id_uf = piuf.ID_UF               
+    INNER JOIN Propietarios_Inquilinos p_i 
+        ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
+    INNER JOIN bda.Unidad_Funcional uf 
+        ON piuf.ID_UF = uf.id_unidad
+    INNER JOIN bda.Expensa e 
+        ON de.id_expensa = e.id_expensa
+    INNER JOIN bda.Consorcio c 
+        ON uf.id_consorcio = c.id_consorcio
+    WHERE (c.nombre = @NombreConsorcio OR @NombreConsorcio IS NULL)
+      AND e.mes = @Mes
+    ORDER BY uf.numero_unidad;
+END;
+GO
 
 ------------------------------ Reporte 2 -----------------------------
 
