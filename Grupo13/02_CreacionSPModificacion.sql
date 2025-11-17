@@ -1,3 +1,20 @@
+/* =========================================================
+	02_CreacionSPModificacion.sql - Com2900G13
+	Proyecto: Altos de Saint Just
+    Materia: Bases de datos aplicada
+    Grupo: 13
+
+	Este archivo crea los SP para modificar registros
+
+	Alumnos:
+		45628269 - Liber Federico Manuel 
+		46265307 - Ares Nicolás jesús 
+		45754471 - Pityla Damian 
+		42587858 - Murillo Joel
+		46292592 - Larriba Pedro Ezequiel 
+		40464246 - Diaz Ortiz  Lucas Javier 
+========================================================= */
+
 CREATE OR ALTER PROCEDURE bda.spModificacionConsorcio
     @IdConsorcio INT,
     @Nombre VARCHAR(80),
