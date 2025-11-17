@@ -401,11 +401,6 @@ BEGIN
             RETURN;
         END
 
-        IF EXISTS (SELECT 1 FROM bda.Pagos WHERE id_expensa = @IdExpensa)
-        BEGIN
-            RAISERROR('No se puede borrar la expensa porque tiene pagos asociados.', 16, 1);
-            RETURN;
-        END
 
         BEGIN TRANSACTION;
 
@@ -565,11 +560,6 @@ BEGIN
             RETURN;
         END
 
-        IF EXISTS (SELECT 1 FROM bda.Detalle_Expensa WHERE id_pago = @IdPago)
-        BEGIN
-            RAISERROR('No se puede borrar el pago porque esta asociado a un detalle de expensa.', 16, 1);
-            RETURN;
-        END
 
         BEGIN TRANSACTION;
 

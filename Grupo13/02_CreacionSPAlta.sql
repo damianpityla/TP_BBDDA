@@ -547,10 +547,10 @@ BEGIN
         BEGIN TRANSACTION;
 
             INSERT INTO bda.Detalle_Expensa
-                (id_expensa, id_uf, id_pago, interes_por_mora, valor_ordinarias,
+                (id_expensa, id_uf, interes_por_mora, valor_ordinarias,
                  valor_extraordinarias, valor_baulera, valor_cochera, total)
             VALUES
-                (@IdExpensa, @IdUF, @IdPago, @Interes, @ValOrd, @ValExt, @ValBaul, @ValCoch, @Total);
+                (@IdExpensa, @IdUF, @Interes, @ValOrd, @ValExt, @ValBaul, @ValCoch, @Total);
 
         COMMIT TRANSACTION;
 
@@ -564,12 +564,12 @@ END
 GO
 
 CREATE OR ALTER PROCEDURE bda.spAltaEstadoFinanciero
-    @IdExpensa INT,
-    @SaldoAnterior DECIMAL(18,2),
-    @IngTermino DECIMAL(18,2),
-    @IngAdeudados DECIMAL(18,2),
+    @IdExpensa      INT,
+    @SaldoAnterior  DECIMAL(18,2),
+    @IngTermino     DECIMAL(18,2),
+    @IngAdeudados   DECIMAL(18,2),
     @IngAdelantados DECIMAL(18,2),
-    @EgresosMes DECIMAL(18,2)
+    @EgresosMes     DECIMAL(18,2)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -581,14 +581,23 @@ BEGIN
         IF EXISTS (SELECT 1 FROM bda.Estado_Financiero WHERE id_expensa = @IdExpensa)
             RAISERROR('Esta expensa ya tiene un estado financiero.', 16, 1);
 
+        DECLARE @IngresosMes  DECIMAL(18,2),
+                @SaldoCierre  DECIMAL(18,2);
+
+        SET @IngresosMes = ISNULL(@IngTermino,0)
+                         + ISNULL(@IngAdeudados,0)
+                         + ISNULL(@IngAdelantados,0);
+
+        SET @SaldoCierre = ISNULL(@SaldoAnterior,0)
+                         + @IngresosMes
+                         - ISNULL(@EgresosMes,0);
+
         BEGIN TRANSACTION;
 
             INSERT INTO bda.Estado_Financiero
-                (id_expensa, saldo_anterior, ingresos_termino,
-                 ingresos_adeudados, ingresos_adelantados, egresos_mes)
+                (id_expensa, saldo_anterior, ingresos_mes, egresos_mes, saldo_cierre)
             VALUES
-                (@IdExpensa, @SaldoAnterior, @IngTermino,
-                 @IngAdeudados, @IngAdelantados, @EgresosMes);
+                (@IdExpensa, @SaldoAnterior, @IngresosMes, @EgresosMes, @SaldoCierre);
 
         COMMIT TRANSACTION;
 
@@ -598,7 +607,7 @@ BEGIN
         IF @@TRANCOUNT > 0 ROLLBACK;
         PRINT('Error: ' + ERROR_MESSAGE());
     END CATCH
-END
+END;
 GO
 
 
@@ -668,8 +677,8 @@ BEGIN
 
         BEGIN TRANSACTION;
 
-            INSERT INTO bda.Pagos(id_pago, fecha_pago, cta_origen, importe, asociado, id_unidad, id_expensa)
-            VALUES (@IdPago, @FechaPago, @CtaOrigen, @Importe, @Asociado, @IdUnidad, @IdExpensa);
+            INSERT INTO bda.Pagos(id_pago, fecha_pago, cta_origen, importe, asociado, id_unidad)
+            VALUES (@IdPago, @FechaPago, @CtaOrigen, @Importe, @Asociado, @IdUnidad);
 
         COMMIT TRANSACTION;
 
