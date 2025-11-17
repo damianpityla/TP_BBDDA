@@ -27,7 +27,10 @@ exec bda.spReporte1Expensas
 ------------------------------ Reporte 3 -----------------------------
 
 ------------------------------ Reporte 4 -----------------------------
-
+EXEC bda.spTopMesesIngresosGastos 
+    @IdConsorcio = 1,
+    @AnioDesde = 2023,
+    @AnioHasta = 2025;
 ------------------------------ Reporte 5 -----------------------------
 
 EXEC bda.spMostrarTOP3Morosos

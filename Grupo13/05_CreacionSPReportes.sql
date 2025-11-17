@@ -73,6 +73,92 @@ GO
 ------------------------------ Reporte 3 -----------------------------
 
 ------------------------------ Reporte 4 -----------------------------
+CREATE OR ALTER PROCEDURE bda.spTopMesesIngresosGastos
+    @IdConsorcio INT,       -- filtrar por consorcio
+    @AnioDesde INT,         -- año inicial para filtrar ingresos
+    @AnioHasta INT          -- año final para filtrar ingresos
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Si existe una tabla temporal previa, la elimino
+    IF OBJECT_ID('tempdb..#Ingresos') IS NOT NULL DROP TABLE #Ingresos;
+
+    -- Creo la tabla temporal que almacenará ingresos agrupados por año y mes
+    CREATE TABLE #Ingresos (
+        Anio INT,
+        Mes TINYINT,
+        TotalIngresos DECIMAL(20,2)
+    );
+
+    -- Inserto los ingresos agrupados por año/mes para ese consorcio y rango de años
+    INSERT INTO #Ingresos (Anio, Mes, TotalIngresos)
+    SELECT
+        YEAR(p.fecha_pago) AS Anio,                 -- Año del pago
+        MONTH(p.fecha_pago) AS Mes,                 -- Mes del pago
+        SUM(p.importe) AS TotalIngresos             -- Suma total de ingresos del mes
+    FROM bda.Pagos p
+    INNER JOIN bda.Unidad_Funcional uf 
+        ON uf.id_unidad = p.id_unidad               -- Relaciona pagos con una unidad funcional
+    WHERE uf.id_consorcio = @IdConsorcio            -- Filtra por consorcio
+      AND YEAR(p.fecha_pago) BETWEEN @AnioDesde AND @AnioHasta  -- Aplica filtro de años
+    GROUP BY YEAR(p.fecha_pago), MONTH(p.fecha_pago);           -- Agrupa ingresos mensualizados
+
+
+    IF OBJECT_ID('tempdb..#GastosTotales') IS NOT NULL DROP TABLE #GastosTotales;
+
+    -- Creo la tabla temporal que almacenará los gastos totales por mes
+    -- Luego sumo gastos ordinarios y gastos extraordinarios por mes
+
+    CREATE TABLE #GastosTotales (
+        Mes TINYINT,
+        TotalGastos DECIMAL(20,2)
+    );
+
+    INSERT INTO #GastosTotales (Mes, TotalGastos)
+    SELECT 
+        COALESCE(o.Mes, e.Mes) AS Mes,   -- Si un mes existe solo en O o solo en E, elijo el que no sea NULL
+        COALESCE(o.MontoOrdinario, 0) +  -- Si no hay gastos ordinarios en ese mes, pongo 0
+        COALESCE(e.MontoExtraordinario, 0) AS TotalGastos   -- Igual para extraordinarios
+    FROM
+        (
+            -- Subconsulta 'o': agrupa gastos ordinarios por mes
+            SELECT mes AS Mes, SUM(importe) AS MontoOrdinario
+            FROM bda.Gastos_Ordinarios
+            WHERE id_consorcio = @IdConsorcio
+            GROUP BY mes
+        ) o
+    FULL JOIN
+        (
+            -- Subconsulta 'e': agrupa gastos extraordinarios por mes
+            SELECT mes AS Mes, SUM(importe) AS MontoExtraordinario
+            FROM bda.Gastos_Extraordinarios
+            WHERE id_consorcio = @IdConsorcio
+            GROUP BY mes
+        ) e
+    ON o.Mes = e.Mes; -- Full join asegura que entran todos los meses (haya O, E, o ambos)
+
+    -- Los 5 meses con mayores ingresos dentro del rango de años
+    SELECT TOP 5 
+        Anio,
+        Mes,
+        TotalIngresos
+    FROM #Ingresos
+    ORDER BY TotalIngresos DESC;
+
+    -- Los 5 meses con mayores gastos
+    SELECT TOP 5 
+        Mes,
+        TotalGastos
+    FROM #GastosTotales
+    ORDER BY TotalGastos DESC;
+
+
+    DROP TABLE #Ingresos;         -- Elimino tabla temporal de ingresos
+    DROP TABLE #GastosTotales;    -- Elimino tabla temporal de gastos
+
+END;
+GO
 
 ------------------------------ Reporte 5 -----------------------------
 
