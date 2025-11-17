@@ -410,51 +410,34 @@ GO
 ------------------------------ Reporte 6 -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
-(
-    @IdConsorcio INT = NULL,
-    @FechaDesde DATE = NULL,
-    @FechaHasta DATE = NULL
-)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    WITH PagosPorExpensa AS
+    ;WITH PagosConUF AS
     (
         SELECT
             uf.id_unidad,
-            uf.id_consorcio,
-            CONCAT(uf.piso, '-', uf.depto) AS ubicacion,
             p.fecha_pago,
-            p.importe,
-            p.asociado,
-            e.id_expensa
+            p.importe
         FROM bda.Pagos p
-        INNER JOIN bda.Unidad_Funcional uf 
-            ON p.id_unidad = uf.id_unidad
-        INNER JOIN bda.Expensa e
-            ON e.id_consorcio = uf.id_consorcio
-           AND e.mes = MONTH(p.fecha_pago)
-           AND p.fecha_pago BETWEEN e.fecha_emision AND e.vencimiento2
-        WHERE (@IdConsorcio IS NULL OR uf.id_consorcio = @IdConsorcio)
-          AND (@FechaDesde IS NULL OR p.fecha_pago >= @FechaDesde)
-          AND (@FechaHasta IS NULL OR p.fecha_pago <= @FechaHasta)
+        JOIN bda.Propietario_en_UF pu
+             ON pu.CVU_CBU_Propietario = p.cta_origen
+        JOIN bda.Unidad_Funcional uf
+             ON uf.id_unidad = pu.ID_UF
     )
 
     SELECT
-        id_consorcio,
         id_unidad,
-        ubicacion,
-        fecha_pago AS FechaPago,
-        importe AS Importe,
-        asociado AS PagoAsociado,
-        LEAD(fecha_pago) OVER (PARTITION BY id_unidad ORDER BY fecha_pago) AS FechaPagoSiguiente,
+        fecha_pago,
+        importe,
+        LEAD(fecha_pago) OVER(PARTITION BY id_unidad ORDER BY fecha_pago) AS FechaPagoSiguiente,
         DATEDIFF(
             DAY,
             fecha_pago,
-            LEAD(fecha_pago) OVER (PARTITION BY id_unidad ORDER BY fecha_pago)
+            LEAD(fecha_pago) OVER(PARTITION BY id_unidad ORDER BY fecha_pago)
         ) AS DiasEntrePagos
-    FROM PagosPorExpensa
+    FROM PagosConUF
     ORDER BY id_unidad, fecha_pago;
 END;
 GO

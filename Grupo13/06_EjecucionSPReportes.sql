@@ -45,17 +45,4 @@ EXEC bda.spMostrarTOP3Morosos
 
 ------------------------------ Reporte 6 -----------------------------
 
-EXEC bda.sp_Reporte6_PagosIntervalos	--Consultar todos los consorcios
-
-EXEC bda.sp_Reporte6_PagosIntervalos	--Consultar consorcio 1 (por ejemplo) en todo 2024
-    @IdConsorcio = 1,
-    @FechaDesde = '2024-01-01',	
-    @FechaHasta = '2024-12-31';			--
-
-
-EXEC bda.sp_Reporte6_PagosIntervalos	--Filtar por fechas
-    @FechaDesde = '2024-01-01',
-    @FechaHasta = '2024-06-30';			--
-
-EXEC bda.sp_Reporte6_PagosIntervalos	--Filtar por consorcio sin rango de fechas
-    @IdConsorcio = 2;					--
+EXEC bda.sp_Reporte6_PagosIntervalos
