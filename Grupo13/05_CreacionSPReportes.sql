@@ -410,6 +410,11 @@ GO
 ------------------------------ Reporte 6 -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
+(
+    @IdConsorcio INT,         
+    @FechaDesde DATE,         
+    @FechaHasta DATE        
+)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -418,6 +423,9 @@ BEGIN
     (
         SELECT
             uf.id_unidad,
+            uf.piso,
+            uf.depto,
+            uf.id_consorcio,
             p.fecha_pago,
             p.importe
         FROM bda.Pagos p
@@ -425,17 +433,22 @@ BEGIN
              ON pu.CVU_CBU_Propietario = p.cta_origen
         JOIN bda.Unidad_Funcional uf
              ON uf.id_unidad = pu.ID_UF
+        WHERE 
+            uf.id_consorcio = @IdConsorcio
+            AND p.fecha_pago BETWEEN @FechaDesde AND @FechaHasta
     )
 
     SELECT
-        id_unidad,
-        fecha_pago,
-        importe,
-        LEAD(fecha_pago) OVER(PARTITION BY id_unidad ORDER BY fecha_pago) AS FechaPagoSiguiente,
+        id_unidad AS UnidadFuncional,
+        CONCAT(piso, '-', depto) AS Ubicacion,
+        fecha_pago AS FechaPago,
+        importe AS Importe,
+        LEAD(fecha_pago) OVER (PARTITION BY id_unidad ORDER BY fecha_pago)
+            AS FechaPagoSiguiente,
         DATEDIFF(
             DAY,
             fecha_pago,
-            LEAD(fecha_pago) OVER(PARTITION BY id_unidad ORDER BY fecha_pago)
+            LEAD(fecha_pago) OVER (PARTITION BY id_unidad ORDER BY fecha_pago)
         ) AS DiasEntrePagos
     FROM PagosConUF
     ORDER BY id_unidad, fecha_pago;
