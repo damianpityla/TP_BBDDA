@@ -424,9 +424,9 @@ GO
 
 CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
 (
-    @IdConsorcio INT = NULL,
-    @FechaDesde DATE = NULL,
-    @FechaHasta DATE = NULL
+    @IdConsorcio INT,
+    @FechaDesde DATE,
+    @FechaHasta DATE
 )
 AS
 BEGIN
