@@ -57,3 +57,8 @@ EXEC bda.sp_Reporte6_PagosIntervalos                    --Ejemplo todos los filt
     @IdConsorcio = 1,
     @FechaDesde = '2025-01-01',
     @FechaHasta = '2025-12-31';
+
+------------------------------ Reporte 6 XML -----------------------------
+
+EXEC bda.sp_Reporte6_PagosIntervalos_XML;
+

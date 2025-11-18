@@ -411,9 +411,9 @@ GO
 
 CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
 (
-    @IdConsorcio INT = NULL,
-    @FechaDesde DATE = NULL,
-    @FechaHasta DATE = NULL
+    @IdConsorcio INT,
+    @FechaDesde DATE,
+    @FechaHasta DATE
 )
 AS
 BEGIN
@@ -453,5 +453,97 @@ BEGIN
         ) AS DiasEntrePagos
     FROM PagosConUF
     ORDER BY id_unidad, fecha_pago;
+END;
+GO
+
+
+    SELECT
+        id_unidad AS '@ID_UF',
+        piso      AS 'Piso',
+        depto     AS 'Departamento',
+        (
+            SELECT
+                fecha_pago       AS 'FechaPago',
+                importe          AS 'Importe',
+                fecha_siguiente  AS 'FechaPagoSiguiente',
+                dias_intervalo   AS 'DiasEntrePagos'
+            FROM PagosConIntervalo p2
+            WHERE p2.id_unidad = p1.id_unidad
+            ORDER BY fecha_pago
+            FOR XML PATH('Pago'), TYPE
+        ) AS 'Pagos'
+    FROM PagosConIntervalo p1
+    GROUP BY id_unidad, piso, depto
+    ORDER BY id_unidad
+    FOR XML PATH('UnidadFuncional'), ROOT('ReportePagosUF');
+
+
+------------------------------ Reporte 6 XML -----------------------------
+CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos_XML
+(
+    @IdConsorcio INT,
+    @FechaDesde DATE,
+    @FechaHasta DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH PagosConUF AS
+    (
+        SELECT
+            uf.id_consorcio,
+            uf.id_unidad,
+            uf.piso,
+            uf.depto,
+            p.fecha_pago,
+            p.importe
+        FROM bda.Pagos p
+        JOIN bda.Propietario_en_UF pu
+            ON pu.CVU_CBU_Propietario = p.cta_origen
+        JOIN bda.Unidad_Funcional uf
+            ON uf.id_unidad = pu.ID_UF
+        WHERE 
+            (@IdConsorcio IS NULL OR uf.id_consorcio = @IdConsorcio)
+            AND (@FechaDesde IS NULL OR p.fecha_pago >= @FechaDesde)
+            AND (@FechaHasta IS NULL OR p.fecha_pago <= @FechaHasta)
+    ),
+    PagosConIntervalo AS
+    (
+        SELECT
+            id_unidad,
+            piso,
+            depto,
+            fecha_pago,
+            importe,
+            LEAD(fecha_pago) OVER (PARTITION BY id_unidad ORDER BY fecha_pago)
+                AS fecha_siguiente,
+            DATEDIFF(
+                DAY,
+                fecha_pago,
+                LEAD(fecha_pago) OVER (PARTITION BY id_unidad ORDER BY fecha_pago)
+            ) AS dias_intervalo
+        FROM PagosConUF
+    )
+
+    SELECT
+        id_unidad AS '@ID_UF',
+        piso      AS 'Piso',
+        depto     AS 'Departamento',
+        (
+            SELECT
+                fecha_pago       AS 'FechaPago',
+                importe          AS 'Importe',
+                fecha_siguiente  AS 'FechaPagoSiguiente',
+                dias_intervalo   AS 'DiasEntrePagos'
+            FROM PagosConIntervalo p2
+            WHERE p2.id_unidad = p1.id_unidad
+            ORDER BY fecha_pago
+            FOR XML PATH('Pago'), TYPE
+        ) AS 'Pagos'
+    FROM PagosConIntervalo p1
+    GROUP BY id_unidad, piso, depto
+    ORDER BY id_unidad
+    FOR XML PATH('UnidadFuncional'), ROOT('ReportePagosUF');
 END;
 GO
