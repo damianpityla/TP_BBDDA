@@ -411,9 +411,9 @@ GO
 
 CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
 (
-    @IdConsorcio INT,         
-    @FechaDesde DATE,         
-    @FechaHasta DATE        
+    @IdConsorcio INT = NULL,
+    @FechaDesde DATE = NULL,
+    @FechaHasta DATE = NULL
 )
 AS
 BEGIN
@@ -434,8 +434,9 @@ BEGIN
         JOIN bda.Unidad_Funcional uf
              ON uf.id_unidad = pu.ID_UF
         WHERE 
-            uf.id_consorcio = @IdConsorcio
-            AND p.fecha_pago BETWEEN @FechaDesde AND @FechaHasta
+            (@IdConsorcio IS NULL OR uf.id_consorcio = @IdConsorcio)
+            AND (@FechaDesde IS NULL OR p.fecha_pago >= @FechaDesde)
+            AND (@FechaHasta IS NULL OR p.fecha_pago <= @FechaHasta)
     )
 
     SELECT

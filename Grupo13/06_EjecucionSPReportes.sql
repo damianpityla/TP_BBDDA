@@ -45,7 +45,15 @@ EXEC bda.spMostrarTOP3Morosos
 
 ------------------------------ Reporte 6 -----------------------------
 
-EXEC bda.sp_Reporte6_PagosIntervalos 
-    @IdConsorcio = 1,                   --Ejemplo de filtros
+EXEC bda.sp_Reporte6_PagosIntervalos;                   --Ejemplo sin Filtros
+
+EXEC bda.sp_Reporte6_PagosIntervalos @IdConsorcio = 1;  --Ejemplo filtro solo Consorcio
+
+EXEC bda.sp_Reporte6_PagosIntervalos                    --Ejemplo filtro solo por fechas
+    @FechaDesde = '2025-04-01',
+    @FechaHasta = '2025-04-30';
+
+EXEC bda.sp_Reporte6_PagosIntervalos                    --Ejemplo todos los filtros
+    @IdConsorcio = 1,
     @FechaDesde = '2025-01-01',
     @FechaHasta = '2025-12-31';
