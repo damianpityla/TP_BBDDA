@@ -44,7 +44,6 @@ CREATE TABLE bda.Unidad_Funcional (
 	m2_cochera TINYINT NOT NULL,
 	CONSTRAINT FK_UF_Consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );
-CREATE INDEX IX_UF_Consorcio ON bda.Unidad_Funcional(id_consorcio);
 
 -- Baulera
 IF OBJECT_ID('bda.Baulera') IS NOT NULL DROP TABLE bda.Baulera;
@@ -54,7 +53,6 @@ CREATE TABLE bda.Baulera (
 	importe DECIMAL(18,2) NOT NULL
 	CONSTRAINT FK_Baulera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad),
 );
-CREATE NONCLUSTERED INDEX IX_Baulera_UF ON bda.Baulera(id_uf);
 
 -- Cochera
 IF OBJECT_ID('bda.Cochera') IS NOT NULL DROP TABLE bda.Cochera;
@@ -64,7 +62,6 @@ CREATE TABLE bda.Cochera (
 	importe DECIMAL(18,2) NOT NULL
 	CONSTRAINT FK_Cochera_UF FOREIGN KEY (id_uf) REFERENCES bda.Unidad_Funcional(id_unidad)
 );
-CREATE NONCLUSTERED INDEX IX_Cochera_UF ON bda.Cochera(id_uf);
 
 -- Propietario
 IF OBJECT_ID('bda.Propietario') IS NOT NULL DROP TABLE bda.Propietario;
@@ -134,7 +131,6 @@ CREATE TABLE bda.Expensa (
 	CONSTRAINT CK_Expensa_Vencs CHECK (vencimiento2 > vencimiento1),
 	CONSTRAINT UQ_Expensa UNIQUE (id_consorcio, mes)
 );
-CREATE INDEX IX_Expensa_Consorcio ON bda.Expensa(id_consorcio);
 
 -- Detalle Expensa
 IF OBJECT_ID('bda.Detalle_Expensa') IS NOT NULL DROP TABLE bda.Detalle_Expensa;
