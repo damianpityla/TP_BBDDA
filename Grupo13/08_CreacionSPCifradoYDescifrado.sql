@@ -12,6 +12,14 @@
        desencriptados y legibles
 
     NOTA: No se modifican SP existentes, cumpliendo la consigna.
+
+    Alumnos:
+		45628269 - Liber Federico Manuel 
+		46265307 - Ares Nicolás jesús 
+		45754471 - Pityla Damian 
+		42587858 - Murillo Joel
+		46292592 - Larriba Pedro Ezequiel 
+		40464246 - Diaz Ortiz  Lucas Javier 
 ========================================================= */
 
 USE Com2900G13;
@@ -91,9 +99,6 @@ BEGIN
 END;
 GO
 
--- EXEC bda.spCifrarDatosSensibles;
--- select * from bda.Inquilino;
-
 -- TRIGGERS PARA CIFRAR AUTOMATICAMENTE DATOS NUEVOS
 
 --TRIGGER PROPIETARIO
@@ -119,7 +124,6 @@ BEGIN
     INNER JOIN inserted I ON P.ID_Propietario = I.ID_Propietario;
 END;
 GO
-
 
 --TRIGGER INQUILINO 
 CREATE OR ALTER TRIGGER bda.trgCifrarInquilino
