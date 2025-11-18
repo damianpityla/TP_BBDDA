@@ -114,7 +114,7 @@ SELECT * FROM bda.Gastos_Ordinarios WHERE mes = 7
 ---------------------------- ALTA DE CONSORCIOS ----------------------------
 
 EXEC bda.spAltaConsorcio -- SE PUEDE
-    @Nombre = 'Azcuenaga',
+    @Nombre = 'Saavedra',
     @Direccion = 'Av. Rivadavia 3500',
     @CantUF = 12,
     @M2Totales = 1800;
@@ -135,9 +135,21 @@ EXEC bda.spAltaConsorcio -- ERROR: M2 TOTALES <= 0
 
 EXEC bda.spAltaUnidadFuncional -- SE PUEDE
     @IdConsorcio = 1,
-    @NumeroUnidad = 1,
-    @Piso = '1',
+    @NumeroUnidad = 31,
+    @Piso = '6',
     @Depto = 'A',
+    @M2_UF = 45,
+    @Porcentaje = 2.5,
+    @Baulera = 1,
+    @M2_Baulera = 3,
+    @Cochera = 1,
+    @M2_Cochera = 12;
+
+EXEC bda.spAltaUnidadFuncional -- SE PUEDE
+    @IdConsorcio = 1,
+    @NumeroUnidad = 32,
+    @Piso = '6',
+    @Depto = 'B',
     @M2_UF = 45,
     @Porcentaje = 2.5,
     @Baulera = 1,
@@ -197,7 +209,8 @@ EXEC bda.spAltaInquilino -- ERROR: EL CVU/CBU ES NULL
 
 EXEC bda.spAltaPropietarioEnUF -- SE PUEDE
     @CVU_CBU_Propietario = '0001234500001234500011',
-    @IdUF = 1;
+    @IdConsorcio = 1,
+    @NumeroUF = 31;
 
 EXEC bda.spAltaPropietarioEnUF -- ERROR: LA UF NO EXISTE
     @CVU_CBU_Propietario = '0001234500001234500011',
@@ -207,7 +220,8 @@ EXEC bda.spAltaPropietarioEnUF -- ERROR: LA UF NO EXISTE
 
 EXEC bda.spAltaInquilinoEnUF -- SE PUEDE
     @CVU_CBU_Inquilino = '1000000000000000000001',
-    @IdUF = 1;
+    @IdConsorcio = 1,
+    @NumeroUF = 32;
 
 EXEC bda.spAltaInquilinoEnUF -- ERROR: EL INQUILINO NO EXISTE
     @CVU_CBU_Inquilino = '2220000000000000000000',
@@ -235,7 +249,7 @@ EXEC bda.spAltaPago -- SE PUEDE
     @CtaOrigen = '0011223344556677889900',
     @Importe = 15000,
     @Asociado = 0,
-    @IdUnidad = 1;
+    @IdUnidad = 31;
 
 EXEC bda.spAltaPago -- ERROR: IMPORTE < 0
     @IdPago = 2,

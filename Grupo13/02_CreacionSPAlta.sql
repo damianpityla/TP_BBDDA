@@ -381,20 +381,24 @@ GO
 
 CREATE OR ALTER PROCEDURE bda.spAltaPropietarioEnUF
     @CVU_CBU_Propietario VARCHAR(22),
-    @IdUF INT
+    @IdConsorcio INT,
+    @NumeroUF INT
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @IdUF INT;
 
     BEGIN TRY
         IF NOT EXISTS (SELECT 1 FROM bda.Propietario WHERE CVU_CBU = @CVU_CBU_Propietario)
             RAISERROR('El propietario no existe.', 16, 1);
 
-        IF NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_unidad = @IdUF)
+        IF NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_consorcio = @IdConsorcio AND numero_unidad = @NumeroUF)
             RAISERROR('La unidad funcional no existe.', 16, 1);
 
         BEGIN TRANSACTION;
 
+            SELECT @IdUF = id_unidad FROM bda.Unidad_Funcional WHERE id_consorcio = @IdConsorcio AND numero_unidad = @NumeroUF
             INSERT INTO bda.Propietario_en_UF (CVU_CBU_Propietario, ID_UF)
             VALUES (@CVU_CBU_Propietario, @IdUF);
 
@@ -411,20 +415,24 @@ GO
 
 CREATE OR ALTER PROCEDURE bda.spAltaInquilinoEnUF
     @CVU_CBU_Inquilino VARCHAR(22),
-    @IdUF INT
+    @IdConsorcio INT,
+    @NumeroUF INT
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @IdUF INT;
 
     BEGIN TRY
         IF NOT EXISTS (SELECT 1 FROM bda.Inquilino WHERE CVU_CBU = @CVU_CBU_Inquilino)
             RAISERROR('El inquilino no existe.', 16, 1);
 
-        IF NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_unidad = @IdUF)
+        IF NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_consorcio = @IdConsorcio AND numero_unidad = @NumeroUF)
             RAISERROR('La unidad funcional no existe.', 16, 1);
 
         BEGIN TRANSACTION;
 
+            SELECT @IdUF = id_unidad FROM bda.Unidad_Funcional WHERE id_consorcio = @IdConsorcio AND numero_unidad = @NumeroUF
             INSERT INTO bda.Inquilino_en_UF (CVU_CBU_Inquilino, ID_UF)
             VALUES (@CVU_CBU_Inquilino, @IdUF);
 

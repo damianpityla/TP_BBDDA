@@ -665,7 +665,7 @@ BEGIN
 	);
 
 	WITH ValoresMesAnterior(id_uf,total,importePago) AS(
-		SELECT de.id_uf,de.total,MAX(p.importe) FROM bda.Detalle_Expensa de
+		SELECT de.id_uf,de.total,SUM(p.importe) FROM bda.Detalle_Expensa de
 		LEFT JOIN bda.Pagos p ON p.id_unidad = de.id_uf AND MONTH(p.fecha_pago) = @Mes - 1
 		GROUP BY de.id_uf,de.total
 	)
@@ -715,7 +715,7 @@ BEGIN
 		GROUP BY id_consorcio
 	),
 	Ingresos_mes(id,importe) AS(
-		SELECT uf.id_consorcio,SUM(p.importe)/5 FROM bda.Pagos p
+		SELECT uf.id_consorcio,SUM(p.importe) FROM bda.Pagos p
 		INNER JOIN bda.Unidad_Funcional uf ON p.id_unidad = uf.id_unidad
 		WHERE MONTH(fecha_pago) = @Mes - 1
 		GROUP BY uf.id_consorcio
