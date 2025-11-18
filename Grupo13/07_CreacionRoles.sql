@@ -115,4 +115,3 @@ where dp.name in(
         'rol_sistemas'
      )
 ORDER BY dp.name;
-

@@ -456,7 +456,7 @@ GO
 
 ------------------------------ Reporte 6 -----------------------------
 
-CREATE OR ALTER PROCEDURE bda.sp_Reporte6_PagosIntervalos
+CREATE OR ALTER PROCEDURE bda.spPagosIntervalos
 (
     @IdConsorcio INT,
     @FechaDesde DATE,
@@ -466,7 +466,12 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    ;WITH PagosConUF AS
+    WITH Propietarios_Inquilinos_UF AS(
+		SELECT * FROM bda.Propietario_en_UF
+		UNION
+		SELECT * FROM bda.Inquilino_en_UF
+	),
+    PagosConUF AS
     (
         SELECT
             uf.id_consorcio,
@@ -476,10 +481,10 @@ BEGIN
             p.fecha_pago,
             p.importe
         FROM bda.Pagos p
-        JOIN bda.Propietario_en_UF pu
-            ON pu.CVU_CBU_Propietario = p.cta_origen
+        JOIN Propietarios_Inquilinos_UF piuf
+            ON piuf.CVU_CBU_Propietario = p.cta_origen
         JOIN bda.Unidad_Funcional uf
-            ON uf.id_unidad = pu.ID_UF
+            ON uf.id_unidad = piuf.ID_UF
         WHERE 
             (@IdConsorcio IS NULL OR uf.id_consorcio = @IdConsorcio)
             AND (@FechaDesde IS NULL OR p.fecha_pago >= @FechaDesde)

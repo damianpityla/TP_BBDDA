@@ -55,7 +55,7 @@ EXEC bda.spMostrarTOP3Morosos
 
 ------------------------------ Reporte 6 -----------------------------
 
-EXEC bda.sp_Reporte6_PagosIntervalos
+EXEC bda.spPagosIntervalos
 	@IdConsorcio = 3,
     @FechaDesde = NULL,
     @FechaHasta = NULL
