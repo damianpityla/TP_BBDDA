@@ -39,7 +39,7 @@ GO
 ------------------------------ CONSORCIOS "datos_varios.xlsx" HOJA: Consorcios$ -----------------------------
 
 EXEC bda.spImportarDatosConsorcios
-	@RutaArchivo = 'C:\SQLTemp\datos_varios.xlsx',
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\datos_varios.xlsx',
 	@NombreHoja = 'Consorcios$';
 
 SELECT * FROM bda.Consorcio
@@ -50,7 +50,7 @@ SELECT * FROM bda.Consorcio
 ------------------------------ PROVEEDORES "datos_varios.xlsx" HOJA: Proveedores$ -----------------------------
 
 EXEC bda.spImportarDatosProveedores
-	@RutaArchivo = 'C:\SQLTemp\datos_varios.xlsx',
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\datos_varios.xlsx',
 	@NombreHoja = 'Proveedores$',
 	@RangoCeldas = 'B3:E30';
 
@@ -62,7 +62,7 @@ SELECT * FROM bda.Proveedor
 ------------------------------ UNIDADES FUNCIONALES POR CONSORCIO "UF_por_consorcio.txt" -----------------------------
 
 EXEC bda.spImportarUnidadesFuncionales  
-	@RutaArchivo= 'C:\SQLTemp\UF_por_consorcio.txt';
+	@RutaArchivo= 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF_por_consorcio.txt';
 
 SELECT * FROM bda.Unidad_Funcional;
 
@@ -72,7 +72,7 @@ SELECT * FROM bda.Unidad_Funcional;
 ------------------------------ INQUILINOS Y PROPIETARIOS "inquilinos_propietarios_datos.csv" -----------------------------
 
 EXEC bda.spImportarPropietariosInquilinos
-	@RutaArchivo = 'C:\SQLTemp\Inquilino-propietarios-datos.csv';
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilinos_propietarios_datos.csv';
 
 SELECT * FROM bda.Propietario
 SELECT * FROM bda.Inquilino
@@ -86,7 +86,7 @@ SELECT * FROM bda.Inquilino
 ------------------------------ INQUILINOS Y PROPIETARIOS EN CADA UNIDAD FUNCIONAL "inquilinos_propietarios_UF.csv" -----------------------------
 
 EXEC bda.spImportarPropietariosInquilinosUF
-	@RutaArchivo = 'C:\SQLTemp\Inquilino-propietarios-UF.csv';
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\inquilinos_propietarios_UF.csv';
 
 SELECT * FROM bda.Propietario_en_UF
 SELECT * FROM bda.Inquilino_en_UF
@@ -100,7 +100,7 @@ SELECT * FROM bda.Inquilino_en_UF
 ------------------------------ PAGOS POR UNIDAD FUNCIONAL "pagos_consorcios.csv" -----------------------------
 
 EXEC bda.spImportarPagosConsorcios
-	@RutaArchivo = 'C:\SQLTemp\pagos_consorcios.csv';
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\pagos_consorcios.csv';
 
 SELECT * FROM bda.Pagos
 
@@ -112,7 +112,7 @@ SELECT * FROM bda.Pagos
 --REPARAR INSERTADO DE DUPLICADOS
 
 EXEC bda.spImportarGastosOrdinarios
-	@RutaArchivo = 'C:\SQLTemp\servicios.json',
+	@RutaArchivo = 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\servicios.json',
 	@Anio = 2025;
 
 SELECT * FROM bda.Gastos_Ordinarios

@@ -15,6 +15,9 @@
 		40464246 - Diaz Ortiz  Lucas Javier 
 ========================================================= */
 
+USE Com2900G13
+GO
+
 CREATE OR ALTER PROCEDURE bda.spModificacionConsorcio
     @IdConsorcio INT,
     @Nombre VARCHAR(80),
@@ -63,7 +66,6 @@ BEGIN
     END CATCH;
 END
 GO
-
 
 CREATE OR ALTER PROCEDURE bda.spModificacionUnidadFuncional
     @IdUF INT,
@@ -132,7 +134,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spModificacionBaulera
     @IdBaulera INT,
     @IdUF INT,
@@ -172,7 +173,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spModificacionCochera
     @IdCochera INT,
     @IdUF INT,
@@ -211,7 +211,6 @@ BEGIN
     END CATCH;
 END
 GO
-
 
 CREATE OR ALTER PROCEDURE bda.spModificacionPropietario
     @IdPropietario INT,
@@ -275,7 +274,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spModificacionInquilino
     @IdInquilino INT,
     @Nombre VARCHAR(30),
@@ -338,7 +336,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spModificacionPropietarioEnUF
     @Id INT,
     @CVU_CBU_Propietario VARCHAR(22),
@@ -378,7 +375,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spModificacionInquilinoEnUF
     @Id INT,
     @CVU_CBU_Inquilino VARCHAR(22),
@@ -417,7 +413,6 @@ BEGIN
     END CATCH;
 END
 GO
-
 
 CREATE OR ALTER PROCEDURE bda.spModificacionProveedor
     @IdProveedor INT,
@@ -468,182 +463,6 @@ BEGIN
 END
 GO
 
-
-CREATE OR ALTER PROCEDURE bda.spModificacionExpensa
-    @IdExpensa INT,
-    @IdConsorcio INT,
-    @Mes TINYINT,
-    @FechaEmision DATE,
-    @Venc1 DATE,
-    @Venc2 DATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-        BEGIN
-            RAISERROR('No existe la expensa indicada.', 16, 1);
-            RETURN;
-        END
-
-        IF NOT EXISTS (SELECT 1 FROM bda.Consorcio WHERE id_consorcio = @IdConsorcio)
-            RAISERROR('El consorcio indicado no existe.', 16, 1);
-
-        IF @Mes NOT BETWEEN 1 AND 12
-            RAISERROR('Mes invalido.', 16, 1);
-
-        IF @Venc2 <= @Venc1
-            RAISERROR('El segundo vencimiento debe ser posterior al primero.', 16, 1);
-
-        IF EXISTS (
-            SELECT 1
-            FROM bda.Expensa
-            WHERE id_consorcio = @IdConsorcio
-              AND mes = @Mes
-              AND id_expensa <> @IdExpensa
-        )
-            RAISERROR('Ya existe una expensa para ese consorcio y mes.', 16, 1);
-
-        BEGIN TRANSACTION;
-
-            UPDATE bda.Expensa
-            SET id_consorcio = @IdConsorcio,
-                mes = @Mes,
-                fecha_emision = @FechaEmision,
-                vencimiento1 = @Venc1,
-                vencimiento2 = @Venc2
-            WHERE id_expensa = @IdExpensa;
-
-        COMMIT TRANSACTION;
-
-        PRINT('Expensa modificada correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH;
-END
-GO
-
-
-CREATE OR ALTER PROCEDURE bda.spModificacionDetalleExpensa
-    @IdDetalle INT,
-    @IdExpensa INT,
-    @IdUF INT,
-    @Interes DECIMAL(18,2),
-    @ValOrd DECIMAL(18,2),
-    @ValExt DECIMAL(18,2),
-    @ValBaul DECIMAL(18,2),
-    @ValCoch DECIMAL(18,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Detalle_Expensa WHERE id_detalle = @IdDetalle)
-        BEGIN
-            RAISERROR('No existe el detalle de expensa indicado.', 16, 1);
-            RETURN;
-        END
-
-        IF NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-            RAISERROR('La expensa indicada no existe.', 16, 1);
-
-        IF NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_unidad = @IdUF)
-            RAISERROR('La unidad funcional indicada no existe.', 16, 1);
-
-
-        DECLARE @Total DECIMAL(18,2);
-        SET @Total = @Interes + @ValOrd + @ValExt + @ValBaul + @ValCoch;
-
-        BEGIN TRANSACTION;
-
-            UPDATE bda.Detalle_Expensa
-            SET id_expensa = @IdExpensa,
-                id_uf = @IdUF,
-                interes_por_mora = @Interes,
-                valor_ordinarias = @ValOrd,
-                valor_extraordinarias = @ValExt,
-                valor_baulera = @ValBaul,
-                valor_cochera = @ValCoch,
-                total = @Total
-            WHERE id_detalle = @IdDetalle;
-
-        COMMIT TRANSACTION;
-
-        PRINT('Detalle de expensa modificado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH;
-END
-GO
-
-CREATE OR ALTER PROCEDURE bda.spModificacionEstadoFinanciero
-    @IdEstado      INT,
-    @IdExpensa     INT,
-    @SaldoAnterior DECIMAL(18,2),
-    @IngTermino    DECIMAL(18,2),
-    @IngAdeudados  DECIMAL(18,2),
-    @IngAdelantados DECIMAL(18,2),
-    @EgresosMes    DECIMAL(18,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Estado_Financiero WHERE id_estado = @IdEstado)
-        BEGIN
-            RAISERROR('No existe el estado financiero indicado.', 16, 1);
-            RETURN;
-        END
-
-        IF NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-            RAISERROR('La expensa indicada no existe.', 16, 1);
-
-        IF EXISTS (
-            SELECT 1
-            FROM bda.Estado_Financiero
-            WHERE id_expensa = @IdExpensa
-              AND id_estado <> @IdEstado
-        )
-            RAISERROR('La expensa indicada ya tiene otro estado financiero.', 16, 1);
-
-        DECLARE @IngresosMes DECIMAL(18,2),
-                @SaldoCierre DECIMAL(18,2);
-
-        SET @IngresosMes = ISNULL(@IngTermino,0)
-                         + ISNULL(@IngAdeudados,0)
-                         + ISNULL(@IngAdelantados,0);
-
-        SET @SaldoCierre = ISNULL(@SaldoAnterior,0)
-                         + @IngresosMes
-                         - ISNULL(@EgresosMes,0);
-
-        BEGIN TRANSACTION;
-
-            UPDATE bda.Estado_Financiero
-            SET id_expensa      = @IdExpensa,
-                saldo_anterior  = @SaldoAnterior,
-                ingresos_mes    = @IngresosMes,
-                egresos_mes     = @EgresosMes,
-                saldo_cierre    = @SaldoCierre
-            WHERE id_estado = @IdEstado;
-
-        COMMIT TRANSACTION;
-
-        PRINT('Estado financiero modificado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH;
-END
-GO
-
-
 CREATE OR ALTER PROCEDURE bda.spModificacionGastoOrdinario
     @IdGastoOrdinario INT,
     @IdConsorcio INT,
@@ -693,7 +512,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spModificacionGastoExtraordinario
     @IdGastoExtraordinario INT,
     @IdConsorcio INT,
@@ -742,7 +560,6 @@ BEGIN
     END CATCH;
 END
 GO
-
 
 CREATE OR ALTER PROCEDURE bda.spModificacionPago
     @IdPago INT,

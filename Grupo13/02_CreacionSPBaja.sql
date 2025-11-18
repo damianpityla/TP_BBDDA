@@ -20,7 +20,6 @@ GO
 
 ------------------------
 
-
 CREATE OR ALTER PROCEDURE bda.spBajaConsorcio
     @IdConsorcio INT
 AS
@@ -79,8 +78,6 @@ BEGIN
     END CATCH
 END
 GO
-
-
 
 CREATE OR ALTER PROCEDURE bda.spBajaUnidadFuncional
     @IdUF INT
@@ -147,7 +144,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spBajaBaulera
     @IdBaulera INT
 AS
@@ -177,7 +173,6 @@ BEGIN
 END
 GO
 
-
 CREATE OR ALTER PROCEDURE bda.spBajaCochera
     @IdCochera INT
 AS
@@ -206,8 +201,6 @@ BEGIN
     END CATCH
 END
 GO
-
-
 
 CREATE OR ALTER PROCEDURE bda.spBajaPropietario
     @IdPropietario INT
@@ -244,8 +237,6 @@ BEGIN
 END
 GO
 
-
-
 CREATE OR ALTER PROCEDURE bda.spBajaInquilino
     @IdInquilino INT
 AS
@@ -281,8 +272,6 @@ BEGIN
 END
 GO
 
-
-
 CREATE OR ALTER PROCEDURE bda.spBajaPropietarioEnUF
     @Id INT
 AS
@@ -311,8 +300,6 @@ BEGIN
     END CATCH
 END
 GO
-
-
 
 CREATE OR ALTER PROCEDURE bda.spBajaInquilinoEnUF
     @Id INT
@@ -343,8 +330,6 @@ BEGIN
 END
 GO
 
-
-
 CREATE OR ALTER PROCEDURE bda.spBajaProveedor
     @IdProveedor INT
 AS
@@ -373,115 +358,6 @@ BEGIN
     END CATCH
 END
 GO
-
-
-
-CREATE OR ALTER PROCEDURE bda.spBajaExpensa
-    @IdExpensa INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-        BEGIN
-            RAISERROR('No existe la expensa indicada.', 16, 1);
-            RETURN;
-        END
-
-        IF EXISTS (SELECT 1 FROM bda.Detalle_Expensa WHERE id_expensa = @IdExpensa)
-        BEGIN
-            RAISERROR('No se puede borrar la expensa porque tiene detalles asociados.', 16, 1);
-            RETURN;
-        END
-
-        IF EXISTS (SELECT 1 FROM bda.Estado_Financiero WHERE id_expensa = @IdExpensa)
-        BEGIN
-            RAISERROR('No se puede borrar la expensa porque tiene estado financiero asociado.', 16, 1);
-            RETURN;
-        END
-
-
-        BEGIN TRANSACTION;
-
-            DELETE FROM bda.Expensa
-            WHERE id_expensa = @IdExpensa;
-
-        COMMIT TRANSACTION;
-
-        PRINT('Expensa eliminada correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END
-GO
-
-
-
-CREATE OR ALTER PROCEDURE bda.spBajaDetalleExpensa
-    @IdDetalle INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Detalle_Expensa WHERE id_detalle = @IdDetalle)
-        BEGIN
-            RAISERROR('No existe el detalle de expensa indicado.', 16, 1);
-            RETURN;
-        END
-
-        BEGIN TRANSACTION;
-
-            DELETE FROM bda.Detalle_Expensa
-            WHERE id_detalle = @IdDetalle;
-
-        COMMIT TRANSACTION;
-
-        PRINT('Detalle de expensa eliminado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END
-GO
-
-
-
-
-CREATE OR ALTER PROCEDURE bda.spBajaEstadoFinanciero
-    @IdEstado INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Estado_Financiero WHERE id_estado = @IdEstado)
-        BEGIN
-            RAISERROR('No existe el estado financiero indicado.', 16, 1);
-            RETURN;
-        END
-
-        BEGIN TRANSACTION;
-
-            DELETE FROM bda.Estado_Financiero
-            WHERE id_estado = @IdEstado;
-
-        COMMIT TRANSACTION;
-
-        PRINT('Estado financiero eliminado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END
-GO
-
-
 
 CREATE OR ALTER PROCEDURE bda.spBajaGastoOrdinario
     @IdGastoOrdinario INT
@@ -512,8 +388,6 @@ BEGIN
 END
 GO
 
-
-
 CREATE OR ALTER PROCEDURE bda.spBajaGastoExtraordinario
     @IdGastoExtraordinario INT
 AS
@@ -542,10 +416,6 @@ BEGIN
     END CATCH
 END
 GO
-
-
-
-
 
 CREATE OR ALTER PROCEDURE bda.spBajaPago
     @IdPago INT

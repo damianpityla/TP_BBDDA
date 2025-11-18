@@ -66,7 +66,7 @@ CREATE TABLE bda.Cochera (
 );
 CREATE NONCLUSTERED INDEX IX_Cochera_UF ON bda.Cochera(id_uf);
 
---Propietario
+-- Propietario
 IF OBJECT_ID('bda.Propietario') IS NOT NULL DROP TABLE bda.Propietario;
 CREATE TABLE bda.Propietario (
 	ID_Propietario INT IDENTITY(1,1) PRIMARY KEY,
@@ -78,7 +78,7 @@ CREATE TABLE bda.Propietario (
 	CVU_CBU VARCHAR(22) UNIQUE
 );
 
---Inquilino
+-- Inquilino
 IF OBJECT_ID('bda.Inquilino') IS NOT NULL DROP TABLE bda.Inquilino;
 CREATE TABLE bda.Inquilino (
 	ID_Inquilino INT IDENTITY(1,1) PRIMARY KEY,
@@ -90,7 +90,7 @@ CREATE TABLE bda.Inquilino (
 	CVU_CBU VARCHAR(22) UNIQUE
 );
 
---propietario_en_UF
+-- Propietario en UF
 IF OBJECT_ID('bda.Propietario_en_UF') IS NOT NULL DROP TABLE bda.Propietario_en_UF;
 CREATE TABLE bda.Propietario_en_UF (
 	ID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE bda.Propietario_en_UF (
 	CONSTRAINT FK_PeUF_UF  FOREIGN KEY (ID_UF)  REFERENCES bda.Unidad_Funcional(id_unidad)
 );
 
---inquilino_en_UF
+-- Inquilino en UF
 IF OBJECT_ID('bda.Inquilino_en_UF') IS NOT NULL DROP TABLE bda.Inquilino_en_UF;
 CREATE TABLE bda.Inquilino_en_UF (
 	ID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
@@ -110,7 +110,7 @@ CREATE TABLE bda.Inquilino_en_UF (
 	CONSTRAINT FK_IeUF_UF  FOREIGN KEY (ID_UF)  REFERENCES bda.Unidad_Funcional(id_unidad)
 );
 
---proveedor
+-- Proveedor
 IF OBJECT_ID('bda.Proveedor') IS NOT NULL DROP TABLE bda.Proveedor;
 CREATE TABLE bda.Proveedor (
 	id_proveedor INT IDENTITY(1,1) PRIMARY KEY,
@@ -136,7 +136,7 @@ CREATE TABLE bda.Expensa (
 );
 CREATE INDEX IX_Expensa_Consorcio ON bda.Expensa(id_consorcio);
 
--- Detalle_Expensa
+-- Detalle Expensa
 IF OBJECT_ID('bda.Detalle_Expensa') IS NOT NULL DROP TABLE bda.Detalle_Expensa;
 CREATE TABLE bda.Detalle_Expensa (
 	id_detalle INT IDENTITY(1,1) PRIMARY KEY,
@@ -173,7 +173,7 @@ CREATE TABLE bda.Gastos_Ordinarios (
 	id_gasto_ordinario INT IDENTITY(1,1) PRIMARY KEY,
 	id_consorcio INT NOT NULL,
 	mes TINYINT NOT NULL CHECK (mes BETWEEN 1 AND 12),
-	tipo_gasto NVARCHAR(100) NOT NULL,   -- banco/limpieza/admin/seguros/etc.
+	tipo_gasto VARCHAR(30) NOT NULL,   -- banco/limpieza/admin/seguros/etc.
 	importe DECIMAL(18,2) NOT NULL,
 	CONSTRAINT FK_GO_consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );

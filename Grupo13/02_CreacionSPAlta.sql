@@ -14,6 +14,7 @@
 		46292592 - Larriba Pedro Ezequiel 
 		40464246 - Diaz Ortiz  Lucas Javier 
 ========================================================= */
+
 USE Com2900G13
 GO
 
@@ -477,187 +478,13 @@ BEGIN
 END
 GO
 
-
-CREATE OR ALTER PROCEDURE bda.spAltaExpensa
-    @IdConsorcio INT,
-    @Mes TINYINT,
-    @FechaEmision DATE,
-    @Venc1 DATE,
-    @Venc2 DATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Consorcio WHERE id_consorcio = @IdConsorcio)
-            RAISERROR('El consorcio no existe.', 16, 1);
-
-        IF @Mes NOT BETWEEN 1 AND 12
-            RAISERROR('Mes inválido.', 16, 1);
-
-        IF @Venc2 <= @Venc1
-            RAISERROR('El segundo vencimiento debe ser posterior al primero.', 16, 1);
-
-        IF EXISTS (SELECT 1 FROM bda.Expensa WHERE id_consorcio = @IdConsorcio AND mes = @Mes)
-            RAISERROR('Ya existe una expensa para ese consorcio y mes.', 16, 1);
-
-        BEGIN TRANSACTION;
-
-            INSERT INTO bda.Expensa(id_consorcio, mes, fecha_emision, vencimiento1, vencimiento2)
-            VALUES (@IdConsorcio, @Mes, @FechaEmision, @Venc1, @Venc2);
-
-        COMMIT TRANSACTION;
-
-        PRINT('Expensa insertada correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END
-GO
-
-CREATE OR ALTER PROCEDURE bda.spAltaDetalleExpensa
-    @IdExpensa INT,
-    @IdUF INT,
-    @IdPago INT,
-    @Interes DECIMAL(18,2),
-    @ValOrd DECIMAL(18,2),
-    @ValExt DECIMAL(18,2),
-    @ValBaul DECIMAL(18,2),
-    @ValCoch DECIMAL(18,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-            RAISERROR('La expensa no existe.', 16, 1);
-
-        IF NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_unidad = @IdUF)
-            RAISERROR('La unidad funcional no existe.', 16, 1);
-
-        IF NOT EXISTS (SELECT 1 FROM bda.Pagos WHERE id_pago = @IdPago)
-            RAISERROR('El pago no existe.', 16, 1);
-
-        -- Cálculo automático del total
-        DECLARE @Total DECIMAL(18,2);
-        SET @Total = @Interes + @ValOrd + @ValExt + @ValBaul + @ValCoch;
-
-        BEGIN TRANSACTION;
-
-            INSERT INTO bda.Detalle_Expensa
-                (id_expensa, id_uf, interes_por_mora, valor_ordinarias,
-                 valor_extraordinarias, valor_baulera, valor_cochera, total)
-            VALUES
-                (@IdExpensa, @IdUF, @Interes, @ValOrd, @ValExt, @ValBaul, @ValCoch, @Total);
-
-        COMMIT TRANSACTION;
-
-        PRINT('Detalle de expensa insertado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END
-GO
-
-CREATE OR ALTER PROCEDURE bda.spAltaEstadoFinanciero
-    @IdExpensa      INT,
-    @SaldoAnterior  DECIMAL(18,2),
-    @IngTermino     DECIMAL(18,2),
-    @IngAdeudados   DECIMAL(18,2),
-    @IngAdelantados DECIMAL(18,2),
-    @EgresosMes     DECIMAL(18,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-            RAISERROR('La expensa no existe.', 16, 1);
-
-        IF EXISTS (SELECT 1 FROM bda.Estado_Financiero WHERE id_expensa = @IdExpensa)
-            RAISERROR('Esta expensa ya tiene un estado financiero.', 16, 1);
-
-        DECLARE @IngresosMes  DECIMAL(18,2),
-                @SaldoCierre  DECIMAL(18,2);
-
-        SET @IngresosMes = ISNULL(@IngTermino,0)
-                         + ISNULL(@IngAdeudados,0)
-                         + ISNULL(@IngAdelantados,0);
-
-        SET @SaldoCierre = ISNULL(@SaldoAnterior,0)
-                         + @IngresosMes
-                         - ISNULL(@EgresosMes,0);
-
-        BEGIN TRANSACTION;
-
-            INSERT INTO bda.Estado_Financiero
-                (id_expensa, saldo_anterior, ingresos_mes, egresos_mes, saldo_cierre)
-            VALUES
-                (@IdExpensa, @SaldoAnterior, @IngresosMes, @EgresosMes, @SaldoCierre);
-
-        COMMIT TRANSACTION;
-
-        PRINT('Estado financiero insertado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END;
-GO
-
-
-CREATE OR ALTER PROCEDURE bda.spAltaGastoOrdinario
-    @IdConsorcio INT,
-    @Mes TINYINT,
-    @TipoGasto VARCHAR(100),
-    @Importe DECIMAL(18,2)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM bda.Consorcio WHERE id_consorcio = @IdConsorcio)
-            RAISERROR('El consorcio no existe.', 16, 1);
-
-        IF @Mes NOT BETWEEN 1 AND 12
-            RAISERROR('Mes inválido.', 16, 1);
-
-        IF LEN(@TipoGasto) = 0 OR LEN(@TipoGasto) > 100
-            RAISERROR('Tipo de gasto inválido.', 16, 1);
-
-        IF @Importe <= 0
-            RAISERROR('El importe debe ser mayor a 0.', 16, 1);
-
-        BEGIN TRANSACTION;
-
-            INSERT INTO bda.Gastos_Ordinarios(id_consorcio, mes, tipo_gasto, importe)
-            VALUES (@IdConsorcio, @Mes, @TipoGasto, @Importe);
-
-        COMMIT TRANSACTION;
-
-        PRINT('Gasto ordinario insertado correctamente.');
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK;
-        PRINT('Error: ' + ERROR_MESSAGE());
-    END CATCH
-END
-GO
-
-
 CREATE OR ALTER PROCEDURE bda.spAltaPago
     @IdPago INT,
     @FechaPago DATE,
     @CtaOrigen VARCHAR(22),
     @Importe DECIMAL(18,2),
     @Asociado BIT,
-    @IdUnidad INT,
-    @IdExpensa INT
+    @IdUnidad INT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -671,9 +498,6 @@ BEGIN
 
         IF @IdUnidad IS NOT NULL AND NOT EXISTS (SELECT 1 FROM bda.Unidad_Funcional WHERE id_unidad = @IdUnidad)
             RAISERROR('Unidad funcional inexistente.', 16, 1);
-
-        IF @IdExpensa IS NOT NULL AND NOT EXISTS (SELECT 1 FROM bda.Expensa WHERE id_expensa = @IdExpensa)
-            RAISERROR('Expensa inexistente.', 16, 1);
 
         BEGIN TRANSACTION;
 

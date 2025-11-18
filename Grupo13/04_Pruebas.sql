@@ -105,38 +105,35 @@ EXEC bda.spAltaGastosOrdinarios
 	@ImporteSeguros = 39000,
 	@ImporteGastosGenerales = 13000,
 	@ImporteAgua = 560000,
-	@ImporteLuz = 600000
+	@ImporteLuz = 0
 
 SELECT * FROM bda.Gastos_Ordinarios WHERE mes = 7
 
 --DELETE FROM bda.Gastos_Ordinarios WHERE mes = 7
 
----------------------------- PRUEBAS SP ALTA ----------------------------
-PRINT '--- PRUEBAS CONSORCIO ---';
+---------------------------- ALTA DE CONSORCIOS ----------------------------
 
-EXEC bda.spAltaConsorcio 
+EXEC bda.spAltaConsorcio -- SE PUEDE
     @Nombre = 'Azcuenaga',
     @Direccion = 'Av. Rivadavia 3500',
     @CantUF = 12,
     @M2Totales = 1800;
 
-EXEC bda.spAltaConsorcio 
+EXEC bda.spAltaConsorcio -- ERROR: NOMBRE NULL
     @Nombre = '',
     @Direccion = 'Calle Siempreviva 123',
     @CantUF = 12,
     @M2Totales = 1800;
 
-EXEC bda.spAltaConsorcio 
+EXEC bda.spAltaConsorcio -- ERROR: M2 TOTALES <= 0
     @Nombre = 'Test',
     @Direccion = 'Calle Falsa 123',
     @CantUF = 12,
     @M2Totales = -5;
 
+---------------------------- ALTA DE UNIDADES FUNCIONALES ----------------------------
 
-
-PRINT '--- PRUEBAS UNIDAD FUNCIONAL ---';
-
-EXEC bda.spAltaUnidadFuncional
+EXEC bda.spAltaUnidadFuncional -- SE PUEDE
     @IdConsorcio = 1,
     @NumeroUnidad = 1,
     @Piso = '1',
@@ -148,7 +145,7 @@ EXEC bda.spAltaUnidadFuncional
     @Cochera = 1,
     @M2_Cochera = 12;
 
-EXEC bda.spAltaUnidadFuncional
+EXEC bda.spAltaUnidadFuncional -- ERROR: EL CONSORCIO NO EXISTE
     @IdConsorcio = 999,
     @NumeroUnidad = 1,
     @Piso = '1',
@@ -160,11 +157,9 @@ EXEC bda.spAltaUnidadFuncional
     @Cochera = 0,
     @M2_Cochera = 0;
 
+---------------------------- ALTA DE PROPIETARIOS ----------------------------
 
-
-PRINT '--- PRUEBAS PROPIETARIO ---';
-
-EXEC bda.spAltaPropietario
+EXEC bda.spAltaPropietario -- SE PUEDE
     @Nombre = 'Juan',
     @Apellido = 'Gomez',
     @DNI = '30111222',
@@ -172,7 +167,7 @@ EXEC bda.spAltaPropietario
     @Telefono = '1122334455',
     @CVU_CBU = '0001234500001234500011';
 
-EXEC bda.spAltaPropietario
+EXEC bda.spAltaPropietario -- ERROR: EL CVU/CBU YA ESTA REGISTRADO
     @Nombre = 'Luis',
     @Apellido = 'Martinez',
     @DNI = '29123123',
@@ -180,11 +175,9 @@ EXEC bda.spAltaPropietario
     @Telefono = '1188776655',
     @CVU_CBU = '0001234500001234500011';
 
+---------------------------- ALTA DE INQUILINOS ----------------------------
 
-
-PRINT '--- PRUEBAS INQUILINO ---';
-
-EXEC bda.spAltaInquilino
+EXEC bda.spAltaInquilino -- SE PUEDE
     @Nombre = 'Carla',
     @Apellido = 'Lopez',
     @DNI = '32123444',
@@ -192,7 +185,7 @@ EXEC bda.spAltaInquilino
     @Telefono = '1122112211',
     @CVU_CBU = '1000000000000000000001';
 
-EXEC bda.spAltaInquilino
+EXEC bda.spAltaInquilino -- ERROR: EL CVU/CBU ES NULL
     @Nombre = 'Mara',
     @Apellido = 'Diaz',
     @DNI = '32000000',
@@ -200,161 +193,57 @@ EXEC bda.spAltaInquilino
     @Telefono = '1188112211',
     @CVU_CBU = '';
 
+---------------------------- ALTA DE PROPIETARIOS EN UF ----------------------------
 
-
-PRINT '--- PRUEBAS PROPIETARIO EN UF ---';
-
-EXEC bda.spAltaPropietarioEnUF
+EXEC bda.spAltaPropietarioEnUF -- SE PUEDE
     @CVU_CBU_Propietario = '0001234500001234500011',
     @IdUF = 1;
 
-EXEC bda.spAltaPropietarioEnUF
+EXEC bda.spAltaPropietarioEnUF -- ERROR: LA UF NO EXISTE
     @CVU_CBU_Propietario = '0001234500001234500011',
     @IdUF = 999;
 
+---------------------------- ALTA DE INQUILINOS EN UF ----------------------------
 
-
-PRINT '--- PRUEBAS INQUILINO EN UF ---';
-
-EXEC bda.spAltaInquilinoEnUF
+EXEC bda.spAltaInquilinoEnUF -- SE PUEDE
     @CVU_CBU_Inquilino = '1000000000000000000001',
     @IdUF = 1;
 
-EXEC bda.spAltaInquilinoEnUF
+EXEC bda.spAltaInquilinoEnUF -- ERROR: EL INQUILINO NO EXISTE
     @CVU_CBU_Inquilino = '2220000000000000000000',
     @IdUF = 1;
 
+---------------------------- ALTA DE PROVEEDORES ----------------------------
 
-
-PRINT '--- PRUEBAS PROVEEDOR ---';
-
-EXEC bda.spAltaProveedor
+EXEC bda.spAltaProveedor -- SE PUEDE
     @Servicio = 'Limpieza',
     @Descripcion = 'Servicio mensual de limpieza',
     @Cuenta = '12345',
     @IdConsorcio = 1;
 
-EXEC bda.spAltaProveedor
+EXEC bda.spAltaProveedor -- ERROR: EL CONSORCIO NO EXISTE
     @Servicio = 'Limpieza',
     @Descripcion = 'Servicio mensual',
     @Cuenta = NULL,
     @IdConsorcio = 999;
 
+---------------------------- ALTA DE PAGOS ----------------------------
 
-
-PRINT '--- PRUEBAS EXPENSA ---';
-
-EXEC bda.spAltaExpensa
-    @IdConsorcio = 1,
-    @Mes = 4,
-    @FechaEmision = '2024-04-01',
-    @Venc1 = '2024-04-10',
-    @Venc2 = '2024-04-20';
-
-EXEC bda.spAltaExpensa
-    @IdConsorcio = 1,
-    @Mes = 5,
-    @FechaEmision = '2024-05-01',
-    @Venc1 = '2024-05-10',
-    @Venc2 = '2024-05-05';
-
-
-
-PRINT '--- PRUEBAS PAGO ---';
-
-EXEC bda.spAltaPago
+EXEC bda.spAltaPago -- SE PUEDE
     @IdPago = 1,
     @FechaPago = '2024-04-03',
     @CtaOrigen = '0011223344556677889900',
     @Importe = 15000,
     @Asociado = 0,
-    @IdUnidad = 1,
-    @IdExpensa = 1;
+    @IdUnidad = 1;
 
-EXEC bda.spAltaPago
+EXEC bda.spAltaPago -- ERROR: IMPORTE < 0
     @IdPago = 2,
     @FechaPago = '2024-04-03',
     @CtaOrigen = '0011223344556677889900',
     @Importe = -2000,
     @Asociado = 0,
-    @IdUnidad = 1,
-    @IdExpensa = 1;
-
-
-
-PRINT '--- PRUEBAS DETALLE EXPENSA ---';
-
-EXEC bda.spAltaDetalleExpensa
-    @IdExpensa = 1,
-    @IdUF = 1,
-    @IdPago = 1,
-    @Interes = 0,
-    @ValOrd = 15000,
-    @ValExt = 0,
-    @ValBaul = 500,
-    @ValCoch = 1200;
-
-EXEC bda.spAltaDetalleExpensa
-    @IdExpensa = 1,
-    @IdUF = 1,
-    @IdPago = 999,
-    @Interes = 0,
-    @ValOrd = 15000,
-    @ValExt = 0,
-    @ValBaul = 500,
-    @ValCoch = 1200;
-
-
-
-PRINT '--- PRUEBAS ESTADO FINANCIERO ---';
-
-EXEC bda.spAltaEstadoFinanciero
-    @IdExpensa = 1,
-    @SaldoAnterior = 10000,
-    @IngTermino = 15000,
-    @IngAdeudados = 3000,
-    @IngAdelantados = 2000,
-    @EgresosMes = 8000;
-
-EXEC bda.spAltaEstadoFinanciero
-    @IdExpensa = 1,
-    @SaldoAnterior = 0,
-    @IngTermino = 0,
-    @IngAdeudados = 0,
-    @IngAdelantados = 0,
-    @EgresosMes = 0;
-
-
-
-PRINT '--- PRUEBAS GASTOS ORDINARIOS ---';
-
-EXEC bda.spAltaGastoOrdinario
-    @IdConsorcio = 1,
-    @Mes = 4,
-    @TipoGasto = 'Luz',
-    @Importe = 50000;
-
-EXEC bda.spAltaGastoOrdinario
-    @IdConsorcio = 1,
-    @Mes = 13,
-    @TipoGasto = 'Luz',
-    @Importe = 50000;
-
-
-
-PRINT '--- PRUEBAS GASTOS EXTRAORDINARIOS ---';
-
-EXEC bda.spAltaGastoExtraordinario
-    @IdConsorcio = 1,
-    @Mes = 4,
-    @Descripcion = 'Reparacion ascensor',
-    @Importe = 340000;
-
-EXEC bda.spAltaGastoExtraordinario
-    @IdConsorcio = 1,
-    @Mes = 4,
-    @Descripcion = 'Reparacion ascensor',
-    @Importe = 0;
+    @IdUnidad = 1;
 
 ------------------------------ GENERACION DE EXPENSAS -----------------------------
 
