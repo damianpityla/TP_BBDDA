@@ -18,6 +18,14 @@
 USE Com2900G13
 GO
 
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE;
+GO
+
+EXEC sp_configure 'Ole Automation Procedures', 1;
+RECONFIGURE;
+GO
+
 ------------------------------ Reporte 1 -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.spReporteFlujoCajaSemanal
@@ -310,6 +318,28 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- API PARA CONVERTIR VALORES EN DOLARES
+    
+    DECLARE @URL NVARCHAR(256) = 'https://api.bluelytics.com.ar/v2/latest';
+    DECLARE @Object INT;
+    DECLARE @JSON TABLE(DATA NVARCHAR(MAX));
+    DECLARE @Datos NVARCHAR(MAX);
+    DECLARE @ValorEnDolares DECIMAL(10,2);
+    DECLARE @FechaValorDolar DATETIME2;
+
+    EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+    EXEC sp_OAMethod @Object, 'OPEN', NULL, 'GET', @URL, 'FALSE';
+    EXEC sp_OAMethod @Object, 'SEND';
+
+    INSERT INTO @JSON EXEC sp_OAGetProperty @Object, 'ResponseText';
+    EXEC sp_OADestroy @Object;
+
+    SET @Datos = (SELECT DATA FROM @JSON);
+
+    SELECT 
+        @ValorEnDolares = JSON_VALUE(@Datos, '$.oficial.value_buy'),
+        @FechaValorDolar = JSON_VALUE(@Datos, '$.last_update');
+
     -- Si existe una tabla temporal previa, la elimino
     IF OBJECT_ID('tempdb..#Ingresos') IS NOT NULL DROP TABLE #Ingresos;
 
@@ -371,17 +401,22 @@ BEGIN
     SELECT TOP 5 
         Anio,
         Mes,
-        TotalIngresos
+        TotalIngresos,
+        CAST(TotalIngresos/@ValorEnDolares AS DECIMAL(18,2)) AS TotalIngresos_En_Dolares
     FROM #Ingresos
     ORDER BY TotalIngresos DESC;
 
     -- Los 5 meses con mayores gastos
     SELECT TOP 5 
         Mes,
-        TotalGastos
+        TotalGastos,
+        CAST(TotalGastos/@ValorEnDolares AS DECIMAL(18,2)) AS TotalGastos_En_Dolares
     FROM #GastosTotales
     ORDER BY TotalGastos DESC;
 
+    SELECT 
+        CAST(JSON_VALUE(@Datos, '$.oficial.value_buy') AS DECIMAL(10,2)) AS Valor_Dolar_Oficial_Compra,
+        CONVERT(VARCHAR(19), TRY_CAST(JSON_VALUE(@Datos, '$.last_update') AS DATETIME2), 120) AS Ultima_Actualizacion
 
     DROP TABLE #Ingresos;         -- Elimino tabla temporal de ingresos
     DROP TABLE #GastosTotales;    -- Elimino tabla temporal de gastos

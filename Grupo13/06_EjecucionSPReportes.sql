@@ -39,7 +39,7 @@ EXEC bda.spReporteRecaudacionPorProcedencia
     @MesDesde = 4,
     @MesHasta = 7;
 
------------------------------- Reporte 4 -----------------------------
+------------------------------ Reporte 4 (INCLUYE API DE COTIZACION DEL DOLAR) -----------------------------
 
 EXEC bda.spTopMesesIngresosGastos 
     @IdConsorcio = 1,
