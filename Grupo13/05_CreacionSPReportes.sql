@@ -43,7 +43,7 @@ BEGIN
             ON p.id_unidad = uf.id_unidad
         INNER JOIN bda.Consorcio c 
             ON uf.id_consorcio = c.id_consorcio
-        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+        WHERE (c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI or @NombreConsorcio IS NULL)
           AND MONTH(p.fecha_pago) = @Mes
     ),
 
@@ -60,7 +60,7 @@ BEGIN
         LEFT JOIN bda.Gastos_Extraordinarios gae
             ON gae.id_consorcio = gao.id_consorcio
            AND gae.mes = gao.mes
-        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI OR @NombreConsorcio IS NULL 
           AND gao.mes = @Mes - 1         -- mes anterior
     ),
 
@@ -87,7 +87,7 @@ BEGIN
     )
 
     SELECT
-        @NombreConsorcio AS consorcio,
+        COALESCE (@NombreConsorcio,'TODOS LOS CONSORCIOS' )AS consorcio,
         @Mes AS mes,
         semana AS semana,
         total_ordinario AS recaudacion_ordinaria,
@@ -240,7 +240,7 @@ BEGIN
             ON p.id_unidad = uf.id_unidad
         INNER JOIN bda.Consorcio c
             ON uf.id_consorcio = c.id_consorcio
-        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+        WHERE (c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI OR @NombreConsorcio is null)
           AND MONTH(p.fecha_pago) BETWEEN @MesDesde AND @MesHasta
         GROUP BY MONTH(p.fecha_pago)
     ),
@@ -257,7 +257,7 @@ BEGIN
             ON de.id_expensa = e.id_expensa
         INNER JOIN bda.Consorcio c
             ON e.id_consorcio = c.id_consorcio
-        WHERE c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI
+        WHERE (c.nombre COLLATE Latin1_General_CI_AI = @NombreConsorcio COLLATE Latin1_General_CI_AI or @NombreConsorcio IS Null)
           AND e.mes BETWEEN @MesDesde AND @MesHasta
         GROUP BY e.mes
     ),
@@ -273,9 +273,8 @@ BEGIN
     )
 
     SELECT
-        @NombreConsorcio AS Consorcio,
-        pg.mes,
-        -- si no hay proporciones, todo el pago va como Ordinario
+        COALESCE(@NombreConsorcio, 'TODOS LOS CONSORCIOS') AS Consorcio, pg.mes,
+
         CAST(
             CASE WHEN pr.DeudaTotal IS NULL OR pr.DeudaTotal = 0
                  THEN pg.TotalPagos
