@@ -64,7 +64,7 @@ SELECT * FROM bda.Proveedor
 EXEC bda.spImportarUnidadesFuncionales  
 	@RutaArchivo= 'C:\Users\fedel\OneDrive\Documentos\GitHub\TP_BBDDA\Grupo13\ArchivosImportacion\UF_por_consorcio.txt';
 
-SELECT * FROM bda.Unidad_Funcional;
+SELECT * FROM bda.Unidad_Funcional
 
 --DBCC CHECKIDENT ('bda.Unidad_Funcional', RESEED, 0);
 --DELETE FROM bda.Unidad_Funcional

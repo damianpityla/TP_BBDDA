@@ -261,33 +261,113 @@ EXEC bda.spAltaPago -- ERROR: IMPORTE < 0
 
 ------------------------------ GENERACION DE EXPENSAS -----------------------------
 
-EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Azcuenaga';
-EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Alzaga';
-EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Alberdi';
-EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Unzue';
-EXEC bda.spMostrarExpensaGenerada @NombreConsorcio = 'Pereyra Iraola';
-
-SELECT * FROM bda.Estado_Financiero
-
 -- MES DE ABRIL
 
 EXEC bda.spGenerarExpensas
 	@Mes = 4
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Azcuenaga',
+    @Mes = 4;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Alzaga',
+    @Mes = 4;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Alberdi',
+    @Mes = 4;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Unzue',
+    @Mes = 4;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Pereyra Iraola',
+    @Mes = 4;
+
+SELECT * FROM bda.Estado_Financiero
 
 -- MES DE MAYO
 
 EXEC bda.spGenerarExpensas
 	@Mes = 5
 
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Azcuenaga',
+    @Mes = 5;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Alzaga',
+    @Mes = 5;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Alberdi',
+    @Mes = 5;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Unzue',
+    @Mes = 5;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Pereyra Iraola',
+    @Mes = 5;
+
+SELECT * FROM bda.Estado_Financiero
+
 -- MES DE JUNIO
 
 EXEC bda.spGenerarExpensas
 	@Mes = 6
 
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Azcuenaga',
+    @Mes = 6;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Alzaga',
+    @Mes = 6;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Alberdi',
+    @Mes = 6;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Unzue',
+    @Mes = 6;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Pereyra Iraola',
+    @Mes = 6;
+
+SELECT * FROM bda.Estado_Financiero
+
 -- MES DE JULIO
 
 EXEC bda.spGenerarExpensas
 	@Mes = 7
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Azcuenaga',
+    @Mes = 7;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Alzaga',
+    @Mes = 7;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Alberdi',
+    @Mes = 7;
+
+EXEC bda.spMostrarExpensaGenerada
+    @NombreConsorcio = 'Unzue',
+    @Mes = 7;
+
+EXEC bda.spMostrarExpensaGenerada 
+    @NombreConsorcio = 'Pereyra Iraola',
+    @Mes = 7;
+
+SELECT * FROM bda.Estado_Financiero
 
 /*
 SELECT * FROM bda.Expensa

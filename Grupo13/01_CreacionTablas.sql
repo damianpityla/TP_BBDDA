@@ -40,8 +40,10 @@ CREATE TABLE bda.Unidad_Funcional (
 	porcentaje DECIMAL(4,1) NOT NULL,
 	baulera BIT NOT NULL,
 	m2_baulera TINYINT NOT NULL,
+	porcentaje_baulera DECIMAL(6,4),
 	cochera BIT NOT NULL,
 	m2_cochera TINYINT NOT NULL,
+	porcentaje_cochera DECIMAL(6,4),
 	CONSTRAINT FK_UF_Consorcio FOREIGN KEY (id_consorcio) REFERENCES bda.Consorcio(id_consorcio)
 );
 
@@ -137,6 +139,7 @@ IF OBJECT_ID('bda.Detalle_Expensa') IS NOT NULL DROP TABLE bda.Detalle_Expensa;
 CREATE TABLE bda.Detalle_Expensa (
 	id_detalle INT IDENTITY(1,1) PRIMARY KEY,
 	id_expensa INT NOT NULL,
+	mes TINYINT,
 	id_uf INT NOT NULL,
 	saldo_anterior DECIMAL(18,2) NOT NULL,
 	pago_recibido DECIMAL(18,2) NOT NULL,
@@ -156,8 +159,11 @@ IF OBJECT_ID('bda.Estado_Financiero') IS NOT NULL DROP TABLE bda.Estado_Financie
 CREATE TABLE bda.Estado_Financiero (
 	id_estado INT IDENTITY(1,1) PRIMARY KEY,
 	id_expensa INT NOT NULL UNIQUE,
+	mes TINYINT,
 	saldo_anterior DECIMAL(18,2) NOT NULL DEFAULT 0,
-	ingresos_mes DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_en_termino DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_adeudados DECIMAL(18,2) NOT NULL DEFAULT 0,
+	ingresos_adelantados DECIMAL(18,2) NOT NULL DEFAULT 0,
 	egresos_mes DECIMAL(18,2) NOT NULL DEFAULT 0,
 	saldo_cierre DECIMAL(18,2) NOT NULL DEFAULT 0,
 	CONSTRAINT FK_EF_Expensa FOREIGN KEY (id_expensa) REFERENCES bda.Expensa(id_expensa)

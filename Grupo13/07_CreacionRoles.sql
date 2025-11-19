@@ -62,7 +62,7 @@ GRANT EXECUTE ON bda.sp_ReportePagosPorDeptoMensual TO rol_admin_bancario;
 GRANT EXECUTE ON bda.spReporteRecaudacionPorProcedencia TO rol_admin_bancario;
 GRANT EXECUTE ON bda.spTopMesesIngresosGastos TO rol_admin_bancario;
 GRANT EXECUTE ON bda.spMostrarTOP3Morosos TO rol_admin_bancario;
-GRANT EXECUTE ON bda.sp_Reporte6_PagosIntervalos TO rol_admin_bancario;
+GRANT EXECUTE ON bda.spPagosIntervalos TO rol_admin_bancario;
 
 -- ADMIN OPERATIVO
 GRANT UPDATE, INSERT, SELECT ON bda.Unidad_Funcional TO rol_admin_operativo;
@@ -74,7 +74,7 @@ GRANT EXECUTE ON bda.sp_ReportePagosPorDeptoMensual TO rol_sistemas;
 GRANT EXECUTE ON bda.spReporteRecaudacionPorProcedencia TO rol_sistemas;
 GRANT EXECUTE ON bda.spTopMesesIngresosGastos TO rol_sistemas;
 GRANT EXECUTE ON bda.spMostrarTOP3Morosos TO rol_sistemas;
-GRANT EXECUTE ON bda.sp_Reporte6_PagosIntervalos TO rol_sistemas;
+GRANT EXECUTE ON bda.spPagosIntervalos TO rol_sistemas;
 
 DENY UPDATE, INSERT, DELETE ON SCHEMA::bda TO rol_sistemas;
 

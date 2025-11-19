@@ -170,6 +170,7 @@ BEGIN
 END;
 GO
 
+exec bda.spCifrarDatosSensibles
 select * from bda.Inquilino
 
 CREATE OR ALTER VIEW bda.vwPropietarioDescifrado

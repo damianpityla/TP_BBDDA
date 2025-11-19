@@ -90,8 +90,10 @@ BEGIN
 	    porcentaje,
 	    baulera,
 		m2_baulera,
+		porcentaje_baulera,
 		cochera,
-		m2_cochera
+		m2_cochera,
+		porcentaje_cochera
 	)
 	SELECT 
 	    c.id_consorcio,
@@ -102,8 +104,10 @@ BEGIN
 	    CAST(REPLACE(t1.coeficiente, ',', '.') AS DECIMAL(4,1)),
 	    CASE WHEN UPPER(t1.baulera) = 'SI' THEN 1 ELSE 0 END,
 		t1.m2_baulera,
+		NULL,
 	    CASE WHEN UPPER(t1.cochera) = 'SI' THEN 1 ELSE 0 END,
-		t1.m2_cochera
+		t1.m2_cochera,
+		NULL
 	FROM #tmpUFxCONS t1
 	JOIN bda.Consorcio c 
 	  ON c.nombre COLLATE Latin1_General_CI_AI = t1.Nombre_consorcio COLLATE Latin1_General_CI_AI
@@ -125,6 +129,22 @@ BEGIN
     PRINT('Se ha importado el archivo de unidades funcionales por consorcio
     Filas insertadas = ' + CAST(@FilasInsertadas AS VARCHAR) + '
     Filas duplicadas = ' + CAST(@FilasDuplicadas AS VARCHAR));
+
+	WITH Totales (id_unidad, PorcentajeBaulera, PorcentajeCochera) AS (
+    SELECT 
+		id_unidad,
+		((m2_baulera * porcentaje) / (m2_unidad_funcional + m2_cochera + m2_baulera)) AS PorcentajeBaulera,
+		((m2_cochera * porcentaje) / (m2_unidad_funcional + m2_cochera + m2_baulera)) AS PorcentajeCochera
+    FROM bda.Unidad_Funcional
+	)
+	UPDATE uf
+	SET 
+		porcentaje_cochera = PorcentajeCochera,
+		porcentaje_baulera = PorcentajeBaulera
+	FROM bda.Unidad_Funcional uf
+	INNER JOIN Totales t 
+		ON uf.id_unidad = t.id_unidad;
+
 END;
 GO
 
@@ -684,18 +704,9 @@ BEGIN
 	SELECT TOP 1 @FechaVencimiento1MesAnterior = vencimiento1 FROM bda.Expensa
 	SELECT TOP 1 @FechaVencimiento2MesAnterior = vencimiento2 FROM bda.Expensa
 
-	DELETE FROM bda.Detalle_Expensa
-	DBCC CHECKIDENT ('bda.Detalle_Expensa', RESEED, 0);
-
-	DELETE FROM bda.Estado_Financiero
-	DBCC CHECKIDENT ('bda.Estado_Financiero', RESEED, 0);
-
-	DELETE FROM bda.Expensa
-	DBCC CHECKIDENT ('bda.Expensa', RESEED, 0);
-
 	SET @FechaEmision = DATEFROMPARTS(@Anio, @Mes, 5);
-	SET @FechaVencimiento1 = DATEFROMPARTS(@Anio, @Mes, 15);
-	SET @FechaVencimiento2 = DATEFROMPARTS(@Anio, @Mes, 25);
+	SET @FechaVencimiento1 = DATEFROMPARTS(@Anio, @Mes, 10);
+	SET @FechaVencimiento2 = DATEFROMPARTS(@Anio, @Mes, 15);
 
 	INSERT INTO bda.Expensa
 	SELECT DISTINCT(c.id_consorcio),@Mes,@FechaEmision,@FechaVencimiento1,@FechaVencimiento2 FROM bda.Consorcio c
@@ -714,17 +725,31 @@ BEGIN
 		WHERE mes = @Mes - 1
 		GROUP BY id_consorcio
 	),
-	Ingresos_mes(id,importe) AS(
+	Ingresos_en_termino(id,importe) AS(
 		SELECT uf.id_consorcio,SUM(p.importe) FROM bda.Pagos p
 		INNER JOIN bda.Unidad_Funcional uf ON p.id_unidad = uf.id_unidad
-		WHERE MONTH(fecha_pago) = @Mes - 1
+		WHERE MONTH(fecha_pago) = @Mes - 1 AND fecha_pago BETWEEN @FechaExpensaMesAnterior AND @FechaVencimiento1MesAnterior
+		GROUP BY uf.id_consorcio
+	),
+	Ingresos_adeudados(id,importe) AS(
+		SELECT uf.id_consorcio,SUM(p.importe) FROM bda.Pagos p
+		INNER JOIN bda.Unidad_Funcional uf ON p.id_unidad = uf.id_unidad
+		WHERE MONTH(fecha_pago) = @Mes - 1 AND fecha_pago > @FechaVencimiento1MesAnterior
+		GROUP BY uf.id_consorcio
+	),
+	Ingresos_adelantados(id,importe) AS(
+		SELECT uf.id_consorcio,SUM(p.importe) FROM bda.Pagos p
+		INNER JOIN bda.Unidad_Funcional uf ON p.id_unidad = uf.id_unidad
+		WHERE MONTH(fecha_pago) = @Mes - 1 AND fecha_pago < @FechaExpensaMesAnterior
 		GROUP BY uf.id_consorcio
 	)
-	INSERT INTO bda.Estado_Financiero(id_expensa,saldo_anterior,ingresos_mes,egresos_mes,saldo_cierre)
-	SELECT im.id,ISNULL(vefma.saldo_anterior,0),im.importe,(gao.importe + ISNULL(gae.importe,0)),(ISNULL(vefma.saldo_anterior,0) + im.importe - (gao.importe + ISNULL(gae.importe,0))) FROM Ingresos_mes im
-	INNER JOIN Gastos_Ordinarios gao ON im.id = gao.id
-	LEFT JOIN Gastos_Extraordinarios gae ON im.id = gae.id
-	LEFT JOIN #tmpValoresEFMesAnterior vefma ON im.id = vefma.id_expensa;
+	INSERT INTO bda.Estado_Financiero(id_expensa,mes,saldo_anterior,ingresos_en_termino,ingresos_adeudados,ingresos_adelantados,egresos_mes,saldo_cierre)
+	SELECT iet.id,@Mes,ISNULL(vefma.saldo_anterior,0),iet.importe,adeud.importe,adel.importe,(gao.importe + ISNULL(gae.importe,0)),(ISNULL(vefma.saldo_anterior,0) + (iet.importe + adeud.importe + adel.importe) - (gao.importe + ISNULL(gae.importe,0))) FROM Ingresos_en_termino iet
+	INNER JOIN Gastos_Ordinarios gao ON iet.id = gao.id
+	LEFT JOIN Gastos_Extraordinarios gae ON iet.id = gae.id
+	INNER JOIN Ingresos_adeudados adeud ON iet.id = adeud.id
+	INNER JOIN Ingresos_adelantados adel ON iet.id = adel.id
+	LEFT JOIN #tmpValoresEFMesAnterior vefma ON iet.id = vefma.id_expensa;
 
 	WITH Gastos_Ordinarios(id,importe) AS(
 		SELECT id_consorcio,SUM(importe)
@@ -732,17 +757,17 @@ BEGIN
 		WHERE mes = @Mes
 		GROUP BY id_consorcio
 	)
-	INSERT INTO bda.Detalle_Expensa(id_expensa,id_uf,saldo_anterior,pago_recibido,deuda,interes_por_mora,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera,total)
-	SELECT e.id_expensa,uf.id_unidad,ISNULL(ant.saldo_anterior,0),ISNULL(ant.pago_recibido,0),(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)),
+	INSERT INTO bda.Detalle_Expensa(id_expensa,mes,id_uf,saldo_anterior,pago_recibido,deuda,interes_por_mora,valor_ordinarias,valor_extraordinarias,valor_baulera,valor_cochera,total)
+	SELECT e.id_expensa,@Mes,uf.id_unidad,ISNULL(ant.saldo_anterior,0),ISNULL(ant.pago_recibido,0),(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)),
 	CASE 
 		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) > 0
 			THEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * 0.05
 		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) <= 0
 			THEN 0
 	END AS interes_por_mora,
-	(gao.importe*(uf.porcentaje/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(b.importe,0),ISNULL(c.importe,0),
+	(gao.importe*((uf.porcentaje-uf.porcentaje_baulera-uf.porcentaje_cochera)/100)),ISNULL((gae.importe*(uf.porcentaje/100)),0),ISNULL(gao.importe*(uf.porcentaje_baulera/100),0),ISNULL(gao.importe*(uf.porcentaje_cochera/100),0),
 	(ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) + 
-	(gao.importe*(uf.porcentaje/100)) + ISNULL((gae.importe*(uf.porcentaje/100)),0) + ISNULL(b.importe,0) + ISNULL(c.importe,0) + 
+	(gao.importe*((uf.porcentaje-uf.porcentaje_baulera-uf.porcentaje_cochera)/100)) + ISNULL((gae.importe*(uf.porcentaje/100)),0) + ISNULL(gao.importe*(uf.porcentaje_baulera/100),0) + ISNULL(gao.importe*(uf.porcentaje_cochera/100),0) + 
 	CASE 
 		WHEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) > 0
 			THEN (ISNULL(ant.saldo_anterior,0) - ISNULL(ant.pago_recibido,0)) * 0.05
@@ -772,7 +797,8 @@ GO
 ------------------------------ SP que muestra la expensa generada por consorcio -----------------------------
 
 CREATE OR ALTER PROCEDURE bda.spMostrarExpensaGenerada
-	@NombreConsorcio VARCHAR(80)
+	@NombreConsorcio VARCHAR(80),
+	@Mes TINYINT
 AS
 	SET NOCOUNT ON
 	PRINT('Mostrando expensa del consorcio ' + @NombreConsorcio);
@@ -792,15 +818,30 @@ AS
 		CAST(uf.porcentaje AS DECIMAL(3,2)) AS '%', 
 		uf.piso + '-' + uf.depto AS 'Piso-Depto.',
 		p_i.Nombre + ' ' + p_i.Apellido AS 'Propietario/Inquilino',
-		de.saldo_anterior AS Saldo_anterior,
+		CASE WHEN de.saldo_anterior > 0 THEN de.saldo_anterior
+		ELSE 0
+		END AS Saldo_Anterior_Deuda,
+		CASE WHEN de.saldo_anterior < 0 THEN ABS(de.saldo_anterior)
+		ELSE 0
+		END AS Saldo_anterior_A_Favor,
 		de.pago_recibido AS Pago_recibido,
-		de.saldo_anterior - de.pago_recibido AS Deuda,
+		CASE WHEN (de.saldo_anterior - de.pago_recibido) > 0 THEN (de.saldo_anterior - de.pago_recibido)
+		ELSE 0
+		END AS Deuda,
+		CASE WHEN (de.saldo_anterior - de.pago_recibido) < 0 THEN ABS(de.saldo_anterior - de.pago_recibido)
+		ELSE 0
+		END AS SaldoAFavorTotal,
 		de.interes_por_mora AS 'Interes por mora',
 		de.valor_ordinarias AS Gastos_Ordinarios,
 		de.valor_baulera AS Baulera,
 		de.valor_cochera AS Cochera,
 		de.valor_extraordinarias AS Gastos_Extraordinarios,
-		de.total AS Total_A_Pagar
+		CASE WHEN (de.total) > 0 THEN de.total
+		ELSE 0
+		END AS TotalAPagar,
+		CASE WHEN (de.total) < 0 THEN ABS(de.total)
+		ELSE 0
+		END AS DiferenciaAFavor
 	FROM Propietarios_Inquilinos_UF piuf
 	INNER JOIN Propietarios_Inquilinos p_i ON piuf.CVU_CBU_Propietario = p_i.CVU_CBU
 	INNER JOIN bda.Unidad_Funcional uf ON piuf.ID_UF = uf.id_unidad
@@ -808,5 +849,6 @@ AS
 	INNER JOIN bda.Expensa e ON de.id_expensa = e.id_expensa
 	INNER JOIN bda.Consorcio c ON uf.id_consorcio = c.id_consorcio
 	WHERE c.nombre = @NombreConsorcio
+	AND de.mes = @Mes
 	ORDER BY uf.numero_unidad
 GO
